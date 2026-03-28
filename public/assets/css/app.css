@@ -781,6 +781,15 @@ body.app-sidebar-collapsed #main-content {
   overflow: hidden;
 }
 
+.row > .panel,
+.row > section.panel {
+  flex: 0 0 calc(100% - 12px * 2);
+  width: calc(100% - 12px * 2);
+  max-width: calc(100% - 12px * 2);
+  margin-left: 12px;
+  margin-right: 12px;
+}
+
 .panel-default {
   background: #ffffff;
 }
@@ -1092,6 +1101,17 @@ textarea.form-control {
 .dataTables_wrapper {
   width: 100%;
   overflow-x: auto;
+}
+
+.panel > .panel-body > .dataTable_wrapper,
+.panel > .panel-body > .dataTables_wrapper {
+  width: 100%;
+}
+
+.dataTable_wrapper > .table,
+.dataTables_wrapper > .table,
+.dataTables_wrapper table {
+  min-width: 100%;
 }
 
 .dataTables_wrapper .dataTables_length,

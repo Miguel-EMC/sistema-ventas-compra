@@ -21,6 +21,15 @@
     overflow: hidden;
 }
 
+.row > .panel,
+.row > section.panel {
+    flex: 0 0 calc(100% - (#{$gutter} * 2));
+    width: calc(100% - (#{$gutter} * 2));
+    max-width: calc(100% - (#{$gutter} * 2));
+    margin-left: $gutter;
+    margin-right: $gutter;
+}
+
 .panel-default {
     background: $color-surface;
 }
@@ -332,6 +341,17 @@ textarea.form-control {
 .dataTables_wrapper {
     width: 100%;
     overflow-x: auto;
+}
+
+.panel > .panel-body > .dataTable_wrapper,
+.panel > .panel-body > .dataTables_wrapper {
+    width: 100%;
+}
+
+.dataTable_wrapper > .table,
+.dataTables_wrapper > .table,
+.dataTables_wrapper table {
+    min-width: 100%;
 }
 
 .dataTables_wrapper .dataTables_length,

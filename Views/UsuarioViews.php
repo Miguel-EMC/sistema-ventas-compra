@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php
+$pageTitle = 'Usuarios';
 include('Head.php');
 ?>
 
@@ -45,124 +46,103 @@ include('Head.php');
                     </ol>
                 </div>
             </div>
+        <header class="panel-heading"> Lista de usuarios del sistema</header>
+        <header class="panel-heading">
+            <div class="panel-body">
+                <div align="right">
+                    <button href="#addUser" title="" data-placement="left" data-toggle="modal"
+                            class="btn btn-primary tooltips" type="button"
+                            data-original-title="Nuevo Usuario">
+                        <span class="fa fa-plus"> </span>
+                        AGREGAR NUEVO USUARIO
+                    </button>
+                </div>
 
-            <div class="row">
-                <div class="col-lg-12">
-                    <div class="row">
-                        <section class="panel">
-                            <header class="panel-heading"> Lista de usuarios del sistema</header>
-                            <header class="panel-heading">
-                                <div class="panel-body">
-                                    <div align="right">
-                                        <button href="#addUser" title="" data-placement="left" data-toggle="modal"
-                                                class="btn btn-primary tooltips" type="button"
-                                                data-original-title="Nuevo Usuario">
-                                            <span class="fa fa-plus"> </span>
-                                            AGREGAR NUEVO USUARIO
-                                        </button>
-                                    </div>
+                <div id="addUser" class="modal fade" tabindex="-1" role="dialog"
+                     aria-labelledby="myModalLabel" aria-hidden="true">
+                    <form class="form-validate form-horizontal" name="form2" action="Registros.php"
+                          method="POST" enctype="multipart/form-data">
+                        <input name="usuarioLogin" value="<?PHP echo $usuario; ?>" type="hidden">
+                        <input name="passwordLogin" value="<?PHP echo $password; ?>" type="hidden">
 
-                                    
-                                    <div id="addUser" class="modal fade" tabindex="-1" role="dialog"
-                                    aria-labelledby="myModalLabel" aria-hidden="true">
-                                    <form class="form-validate form-horizontal" name="form2" action="Registros.php"
-                                          method="POST" enctype="multipart/form-data">
-                                        <input name="usuarioLogin" value="<?PHP echo $usuario; ?>" type="hidden">
-                                        <input name="passwordLogin" value="<?PHP echo $password; ?>" type="hidden">
-
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                        <button type="button" class="close" data-dismiss="modal"
-                                                                aria-hidden="true"> x
-                                                        </button>
-                                                        <h3 id=myModalLabel align="center"> Registrar Nuevo Usuario </h3>
-                                                </div>
-
-                                                <div class="modal-body">
-
-                                                    <section class="panel" class="col-lg-6">
-                                                        <div>
-                                                            <strong>
-                                                                Agregar Imagem del Usuario
-                                                            </strong>
-                                                        </div>
-                                                        <?php
-                                                           include("UploadViewImageCreate.php");
-                                                        ?>
-                                                    </section>
-
-
-                                                    <label for="nombre" class="control-label col-lg-2">
-                                                        Nombre :
-                                                    </label>
-
-                                                    <div class="col-lg-10">
-                                                        <input class="form-control input-lg m-bot15" id="nombre"
-                                                               name="nombre" minlength="5" type="text" required>
-                                                    </div>
-                                                    <br><br>
-
-                                                    <label for="tipo" class="control-label col-lg-2">
-                                                        Tipo :
-                                                    </label>
-                                                    <div class="col-lg-10">
-                                                        <select class="form-control input-lg m-bot15" name="tipo">
-                                                            <option value="ADMINISTRADOR"> ADMINISTRADOR</option>
-                                                            <option value="VENTAS"> VENTAS</option>
-                                                        </select>
-
-                                                    </div>
-                                                    <br><br>
-                                                    <label for="login" class="control-label col-lg-2">
-                                                        Login :
-                                                    </label>
-                                                    <div class="col-lg-10">
-                                                        <input class="form-control input-lg m-bot15" id="login"
-                                                               name="login" minlength="5" type="text" required>
-                                                    </div>
-                                                    <br><br>
-                                                    <label for="password" class="control-label col-lg-2">
-                                                        Password:
-                                                    </label>
-                                                    <div class="col-lg-10">
-                                                        <input class="form-control input-lg m-bot15" id="password"
-                                                               name="password" minlength="5" type="text" required>
-                                                    </div>
-                                                    <br><br>
-
-
-
-
-                                                </div>
-
-                                                <div class="modal-footer">
-                                                    <button class="btn btn-danger" data-dismiss="modal"
-                                                            aria-hidden="true"><strong> Cerrar</strong>
-                                                    </button>
-                                                    <button name="nuevo_usuario" type="submit" class="btn btn-primary">
-                                                        <strong> Registrar</strong>
-                                                    </button>
-                                                </div>
-
-                                            </div>
-
-
-
-                                        </div>
-                                
-                                    </form>
-
-
-                                    
-                                    </div>
-
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <button type="button" class="close" data-dismiss="modal"
+                                            aria-hidden="true"> x
+                                    </button>
+                                    <h3 id=myModalLabel align="center"> Registrar Nuevo Usuario </h3>
                                 </div>
 
-                            </header>
+                                <div class="modal-body">
+
+                                    <section class="panel" class="col-lg-6">
+                                        <div>
+                                            <strong>
+                                                Agregar Imagem del Usuario
+                                            </strong>
+                                        </div>
+                                        <?php
+                                        include("UploadViewImageCreate.php");
+                                        ?>
+                                    </section>
 
 
-                            <div class="panel-body">
+                                    <label for="nombre" class="control-label col-lg-2">
+                                        Nombre :
+                                    </label>
+
+                                    <div class="col-lg-10">
+                                        <input class="form-control input-lg m-bot15" id="nombre"
+                                               name="nombre" minlength="5" type="text" required>
+                                    </div>
+                                    <br><br>
+
+                                    <label for="tipo" class="control-label col-lg-2">
+                                        Tipo :
+                                    </label>
+                                    <div class="col-lg-10">
+                                        <select class="form-control input-lg m-bot15" name="tipo">
+                                            <option value="ADMINISTRADOR"> ADMINISTRADOR</option>
+                                            <option value="VENTAS"> VENTAS</option>
+                                        </select>
+
+                                    </div>
+                                    <br><br>
+                                    <label for="login" class="control-label col-lg-2">
+                                        Login :
+                                    </label>
+                                    <div class="col-lg-10">
+                                        <input class="form-control input-lg m-bot15" id="login"
+                                               name="login" minlength="5" type="text" required>
+                                    </div>
+                                    <br><br>
+                                    <label for="password" class="control-label col-lg-2">
+                                        Password:
+                                    </label>
+                                    <div class="col-lg-10">
+                                        <input class="form-control input-lg m-bot15" id="password"
+                                               name="password" minlength="5" type="text" required>
+                                    </div>
+                                    <br><br>
+                                </div>
+
+                                <div class="modal-footer">
+                                    <button class="btn btn-danger" data-dismiss="modal"
+                                            aria-hidden="true"><strong> Cerrar</strong>
+                                    </button>
+                                    <button name="nuevo_usuario" type="submit" class="btn btn-primary">
+                                        <strong> Registrar</strong>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </header>
+
+        <div class="panel-body">
                                 <div class="dataTable_wrapper">
                                     <table class="table table-striped table-bordered table-hover" id="dataTables-example">
                                     <thead>
@@ -292,13 +272,7 @@ include('Head.php');
                                 <?PHP } ?>
                             </table>
                         </div>
-                    </div>
-                </section>
-            </div>
         </div>
-    </div>
-
-
     </section>
 
 
