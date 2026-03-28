@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <?php
-$pageTitle = 'Productos';
+$pageTitle = 'Productos y stock';
 $breadcrumbItems = [
     ['label' => 'Inicio', 'href' => 'principal.php', 'icon' => 'fa fa-home'],
     ['label' => 'Catalogo', 'href' => 'Producto.php', 'icon' => 'fa fa-inbox'],
     ['label' => 'Productos'],
 ];
 $workspaceTitle = 'Mantenimiento de catalogo';
-$workspaceDescription = 'Estas opciones organizan la base comercial. Aqui gestionas productos, inventario y tipos que alimentan otras operaciones.';
+$workspaceDescription = 'Productos registra lo que se vende en caja y su stock comercial. Activos registra equipos e insumos internos que no pasan por ventas.';
 $workspaceItems = [
-    ['label' => 'Productos', 'href' => 'Producto.php', 'icon' => 'icon_bag_alt', 'description' => 'Administra los productos disponibles para venta y consulta.'],
-    ['label' => 'Inventario', 'href' => 'Inventario.php', 'icon' => 'icon_refresh', 'description' => 'Controla existencias, activos y movimientos de stock.'],
-    ['label' => 'Tipos de producto', 'href' => 'TipoProducto.php', 'icon' => 'fa fa-tags', 'description' => 'Mantiene las categorias base usadas por el catalogo.'],
+    ['label' => 'Productos', 'href' => 'Producto.php', 'icon' => 'icon_bag_alt', 'description' => 'Catalogo comercial: articulos que se venden y descuentan stock.'],
+    ['label' => 'Activos', 'href' => 'Inventario.php', 'icon' => 'icon_refresh', 'description' => 'Equipos, utensilios e insumos internos que no se venden en caja.'],
+    ['label' => 'Tipos de producto', 'href' => 'TipoProducto.php', 'icon' => 'fa fa-tags', 'description' => 'Categorias base usadas solo por el catalogo de venta.'],
 ];
 include('Head.php');
 ?>
@@ -59,15 +59,19 @@ include('Head.php');
             </div>
         </div>
         <?php include("WorkspaceNav.php"); ?>
+        <div class="alert alert-info" role="note">
+            <strong>Productos = venta y stock.</strong>
+            Aqui administras los articulos que salen por caja. La columna <strong>stock</strong> de esta tabla es la existencia comercial que usa el negocio para vender.
+        </div>
 
-        <header class="panel-heading"> Lista de Productos del sistema</header>
+        <header class="panel-heading"> Lista de productos comerciales</header>
         <header class="panel-heading">
             <div class="panel-body">
                 <div align="right">
 
                     <a href="ReporteProductosPdf.php?productos=productos" target="_blank"
                        class="btn btn-danger tooltips"><i
-                                class="fa fa-rotate-right"></i> EXPORTAR PDF </a>
+                                class="fa fa-rotate-right"></i> EXPORTAR PDF DE PRODUCTOS </a>
 
                     <button href="#add" title="" data-placement="top" data-toggle="modal"
                             class="btn btn-primary tooltips" type="button" data-original-title="Nuevo Producto">
@@ -118,7 +122,7 @@ include('Head.php');
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
-                                                    <label class="col-sm-2 control-label">Descripcion:</label>
+                                                    <label class="col-sm-2 control-label">Nombre del producto:</label>
                                                     <div class="col-sm-10">
                                                         <input class="form-control input-lg m-bot15"
                                                                id="descripcion" name="descripcion" type="text"
@@ -186,7 +190,6 @@ include('Head.php');
                         <th>IMAGEN</th>
                         <th> CODIGO</th>
                         <th> PRODUCTO</th>
-                        <th> DESCRIPCION</th>
                         <th>STOCK</th>
                         <th> PRECIO COMPRA</th>
                         <th> PRECIO VENTA</th>
@@ -203,7 +206,6 @@ include('Head.php');
                             <td><img src="<?php echo $urlViews . $product['imagen'] ?>" height="50"
                                      width="50"></td>
                             <td> <?PHP echo $product['codigo']; ?></td>
-                            <td> <?PHP echo $product['nombreProducto']; ?></td>
                             <td> <?PHP echo $product['nombreProducto']; ?></td>
                             <td> <?PHP echo $product['cantidad']; ?></td>
                             <td> <?PHP echo $product['precioCompra']; ?></td>
@@ -272,7 +274,7 @@ include('Head.php');
                                                             </div>
                                                         </div>
                                                         <div class="form-group">
-                                                            <label class="col-sm-2 control-label">Descripcion:</label>
+                                                            <label class="col-sm-2 control-label">Nombre del producto:</label>
                                                             <div class="col-sm-10">
                                                                 <input class="form-control input-lg m-bot15"
                                                                        id="descripcion" name="descripcion"

@@ -8,11 +8,11 @@ $breadcrumbItems = [
     ['label' => 'Tipos de producto'],
 ];
 $workspaceTitle = 'Mantenimiento de catalogo';
-$workspaceDescription = 'Estas opciones organizan la base comercial. Aqui gestionas productos, inventario y tipos que alimentan otras operaciones.';
+$workspaceDescription = 'Los tipos de producto clasifican solo el catalogo de venta. Los activos internos se gestionan aparte y no usan estas categorias.';
 $workspaceItems = [
-    ['label' => 'Productos', 'href' => 'Producto.php', 'icon' => 'icon_bag_alt', 'description' => 'Administra los productos disponibles para venta y consulta.'],
-    ['label' => 'Inventario', 'href' => 'Inventario.php', 'icon' => 'icon_refresh', 'description' => 'Controla existencias, activos y movimientos de stock.'],
-    ['label' => 'Tipos de producto', 'href' => 'TipoProducto.php', 'icon' => 'fa fa-tags', 'description' => 'Mantiene las categorias base usadas por el catalogo.'],
+    ['label' => 'Productos', 'href' => 'Producto.php', 'icon' => 'icon_bag_alt', 'description' => 'Catalogo comercial: articulos que se venden y descuentan stock.'],
+    ['label' => 'Activos', 'href' => 'Inventario.php', 'icon' => 'icon_refresh', 'description' => 'Equipos, utensilios e insumos internos del negocio.'],
+    ['label' => 'Tipos de producto', 'href' => 'TipoProducto.php', 'icon' => 'fa fa-tags', 'description' => 'Categorias usadas solo por el catalogo comercial.'],
 ];
 include('Head.php');
 ?>
@@ -59,6 +59,10 @@ include('Head.php');
             </div>
         </div>
         <?php include("WorkspaceNav.php"); ?>
+        <div class="alert alert-info" role="note">
+            <strong>Tipos de producto = catalogo comercial.</strong>
+            Estas categorias se usan para los productos que se venden. Los <strong>activos internos</strong> no dependen de este modulo.
+        </div>
 
         <header class="panel-heading"> Lista de tipo de Productos del sistema</header>
         <header class="panel-heading">

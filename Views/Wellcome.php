@@ -38,7 +38,7 @@ include('Head.php');
                 <span class="dashboard-kicker">Centro de operaciones</span>
                 <h1>Hola, <?php echo htmlspecialchars((string) $userLogueado, ENT_QUOTES, 'UTF-8'); ?></h1>
                 <p>
-                    Gestiona la operacion diaria desde un panel mas limpio: ventas, inventario, clientes,
+                    Gestiona la operacion diaria desde un panel mas limpio: ventas, productos, activos, clientes,
                     reportes y configuracion quedan al alcance sin perder el flujo clasico del sistema.
                 </p>
                 <div class="dashboard-hero__actions">
@@ -73,7 +73,7 @@ include('Head.php');
                 <h3>Modulos mas usados</h3>
             </div>
             <p>
-                Accesos directos a las areas clave para caja, inventario, clientes y reportes.
+                Accesos directos a las areas clave para caja, productos, activos, clientes y reportes.
             </p>
         </div>
 
@@ -110,7 +110,7 @@ include('Head.php');
             <div class="info-box green-bg">
                 <i class="fa fa-cubes"></i>
                 <div class="count">Stock</div>
-                <div class="title">Inventario disponible del negocio</div>
+                <div class="title">Stock comercial y activos del negocio</div>
             </div>
         </div>
 

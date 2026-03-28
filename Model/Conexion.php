@@ -63,6 +63,7 @@ class Conexion
 
         $i = 0;
         while ($fila = $query->fetch_assoc()) {
+            $fila = $this->normalizeMenuItem($fila);
             $retorno[$i] = $fila;
             $i++;
         }
@@ -80,10 +81,33 @@ class Conexion
 
         $i = 0;
         while ($fila = $query->fetch_assoc()) {
+            $fila = $this->normalizeMenuItem($fila);
             $retorno[$i] = $fila;
             $i++;
         }
         return $retorno;
+    }
+
+    private function normalizeMenuItem(array $item)
+    {
+        $location = basename((string) ($item['location'] ?? ''));
+        if ($location !== 'Inventario.php') {
+            return $item;
+        }
+
+        $label = trim((string) ($item['opcion'] ?? ''));
+        if ($label === 'Inventory') {
+            $item['opcion'] = 'Assets';
+            return $item;
+        }
+
+        if ($label === 'Inventário') {
+            $item['opcion'] = 'Ativos';
+            return $item;
+        }
+
+        $item['opcion'] = 'Activos';
+        return $item;
     }
 
     public function getAllUserData()

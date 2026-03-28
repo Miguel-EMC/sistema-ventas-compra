@@ -58,3 +58,70 @@ vendor/bin/rector process --dry-run
 - El modelo `Model/Conexion.php` sigue existiendo como puente de compatibilidad.
 - Todavia quedan controladores y vistas legacy por mover a `app/` en siguientes fases.
 - La UI nueva vive en `resources/scss/` y cualquier cambio visual global debe salir de ahi.
+
+## Base nueva de migracion
+
+Tambien ya existe una base paralela para la migracion a stack moderno:
+
+- API Laravel 13: `apps/api`
+- Frontend Angular 21: `apps/web`
+- Plan general: `docs/laravel-angular-postgresql-migration-plan.md`
+- Mapa de dominio: `docs/domain-map.md`
+- Propuesta de esquema PostgreSQL: `docs/postgresql-schema-proposal.md`
+- Roadmap API-first: `docs/api-first-roadmap.md`
+
+### Comandos utiles
+
+```bash
+npm run start:web
+npm run build:web
+composer --working-dir=apps/api run-script dev
+composer --working-dir=apps/api install
+composer --working-dir=apps/api run-script test
+```
+
+### Nota sobre PostgreSQL
+
+La base nueva esta pensada para PostgreSQL 18, pero tu PHP local todavia necesita habilitar `pdo_pgsql` y `pgsql` para conectar Laravel directamente a Postgres.
+
+### Credenciales base de la API nueva
+
+- usuario: `admin`
+- password: `password`
+
+### Modulos ya migrados en la base nueva
+
+- `Auth + Users + Roles`
+  - login con token
+  - `me`
+  - logout
+  - CRUD de usuarios
+  - listado de roles
+- `Catalog`
+  - CRUD de categorias de producto
+  - CRUD de productos
+  - ajuste manual de stock con movimientos
+- `Assets`
+  - CRUD de categorias de activo
+  - CRUD de activos internos
+- `Customers`
+  - CRUD de clientes
+  - consulta para perfiles autenticados
+- `Suppliers`
+  - CRUD de proveedores
+  - consulta para perfiles autenticados
+
+### Frontend Angular ya conectado a la API nueva
+
+- `Login`
+- `Dashboard`
+- `Usuarios`
+- `Productos`
+- `Activos`
+- `Clientes`
+- `Proveedores`
+
+## Siguiente bloque recomendado
+
+- `Ventas POS + borradores + checkout`
+- luego `Caja + reportes`

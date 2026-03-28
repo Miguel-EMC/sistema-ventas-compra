@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <?php
-$pageTitle = 'Inventario';
+$pageTitle = 'Activos';
 $breadcrumbItems = [
     ['label' => 'Inicio', 'href' => 'principal.php', 'icon' => 'fa fa-home'],
     ['label' => 'Catalogo', 'href' => 'Producto.php', 'icon' => 'fa fa-inbox'],
-    ['label' => 'Inventario'],
+    ['label' => 'Activos'],
 ];
 $workspaceTitle = 'Mantenimiento de catalogo';
-$workspaceDescription = 'Estas opciones organizan la base comercial. Aqui gestionas productos, inventario y tipos que alimentan otras operaciones.';
+$workspaceDescription = 'Productos registra articulos que se venden y controlan stock comercial. Activos registra equipos e insumos internos que no pasan por caja.';
 $workspaceItems = [
-    ['label' => 'Productos', 'href' => 'Producto.php', 'icon' => 'icon_bag_alt', 'description' => 'Administra los productos disponibles para venta y consulta.'],
-    ['label' => 'Inventario', 'href' => 'Inventario.php', 'icon' => 'icon_refresh', 'description' => 'Controla existencias, activos y movimientos de stock.'],
-    ['label' => 'Tipos de producto', 'href' => 'TipoProducto.php', 'icon' => 'fa fa-tags', 'description' => 'Mantiene las categorias base usadas por el catalogo.'],
+    ['label' => 'Productos', 'href' => 'Producto.php', 'icon' => 'icon_bag_alt', 'description' => 'Catalogo comercial: articulos que se venden y descuentan stock.'],
+    ['label' => 'Activos', 'href' => 'Inventario.php', 'icon' => 'icon_refresh', 'description' => 'Equipos, utensilios e insumos internos del negocio.'],
+    ['label' => 'Tipos de producto', 'href' => 'TipoProducto.php', 'icon' => 'fa fa-tags', 'description' => 'Categorias del catalogo de venta, no de activos internos.'],
 ];
 include('Head.php');
 ?>
@@ -59,19 +59,23 @@ include('Head.php');
             </div>
         </div>
         <?php include("WorkspaceNav.php"); ?>
+        <div class="alert alert-warning" role="note">
+            <strong>Activos = uso interno.</strong>
+            Este modulo no controla el stock comercial de ventas. Aqui registras equipos, utensilios e insumos del negocio que <strong>no se venden en caja</strong>.
+        </div>
 
-        <header class="panel-heading"> Lista de Productos del sistema</header>
+        <header class="panel-heading"> Lista de activos operativos</header>
         <header class="panel-heading">
             <div class="panel-body">
                 <div align="right">
 
                     <a href="ReporteProductosPdf.php?inventario=inventario" target="_blank"
                        class="btn btn-danger tooltips"><i
-                                class="fa fa-rotate-right"></i> EXPORTAR PDF </a>
+                                class="fa fa-rotate-right"></i> EXPORTAR PDF DE ACTIVOS </a>
 
                     <button href="#add" title="" data-placement="top" data-toggle="modal"
-                            class="btn btn-primary tooltips" type="button" data-original-title="Nuevo Producto">
-                        <span class="icon_bag_alt"></span>AGREGAR NUEVO PRODUCTO
+                            class="btn btn-primary tooltips" type="button" data-original-title="Nuevo Activo">
+                        <span class="icon_bag_alt"></span>AGREGAR NUEVO ACTIVO
                     </button>
                 </div>
                 <div id="add" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
@@ -84,7 +88,7 @@ include('Head.php');
                                 <div class="modal-header">
                                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">x
                                     </button>
-                                    <h3 id="myModalLabel" align="center">Registrar Informacion del Activos</h3>
+                                    <h3 id="myModalLabel" align="center">Registrar informacion del activo</h3>
                                 </div>
                                 <div class="modal-body">
                                     <div class="row">
@@ -108,7 +112,7 @@ include('Head.php');
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
-                                                    <label class="col-sm-2 control-label">Descripcion:</label>
+                                                    <label class="col-sm-2 control-label">Nombre del activo:</label>
                                                     <div class="col-sm-10">
                                                         <input class="form-control input-lg m-bot15"
                                                                id="descripcion" name="descripcion" type="text"
@@ -146,7 +150,7 @@ include('Head.php');
                                     <button class="btn btn-default" data-dismiss="modal" aria-hidden="true"><strong>Cerrar</strong>
                                     </button>
                                     <button name="nuevo_Producto" type="submit" class="btn btn-primary">
-                                        <strong>Registrar Nuevo Producto</strong></button>
+                                        <strong>Registrar nuevo activo</strong></button>
                                 </div>
                             </div>
                         </div>
@@ -162,9 +166,8 @@ include('Head.php');
                     <tr>
                         <th>IMAGEN</th>
                         <th> CODIGO</th>
-                        <th> PRODUCTO</th>
-                        <th> DESCRIPCION</th>
-                        <th>STOCK</th>
+                        <th> ACTIVO</th>
+                        <th>CANTIDAD</th>
                         <th> FECHA REGISTRO</th>
                         <th> ACCIONES</th>
                     </tr>
@@ -177,7 +180,6 @@ include('Head.php');
                             <td><img src="<?php echo $urlViews . $product['imagen'] ?>" height="50"
                                      width="50"></td>
                             <td> <?PHP echo $product['codigo']; ?></td>
-                            <td> <?PHP echo $product['nombreProducto']; ?></td>
                             <td> <?PHP echo $product['nombreProducto']; ?></td>
                             <td> <?PHP echo $product['cantidad']; ?></td>
                             <td> <?PHP echo $product['fechaRegistro']; ?></td>
@@ -235,7 +237,7 @@ include('Head.php');
                                                             </div>
                                                         </div>
                                                         <div class="form-group">
-                                                            <label class="col-sm-2 control-label">Descripcion:</label>
+                                                            <label class="col-sm-2 control-label">Nombre del activo:</label>
                                                             <div class="col-sm-10">
                                                                 <input class="form-control input-lg m-bot15"
                                                                        id="descripcion" name="descripcion"
