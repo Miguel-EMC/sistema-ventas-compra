@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <?php
 $pageTitle = 'Ventas';
-include('Head.php');
+include(__DIR__ . '/Head.php');
 ?>
 <body>
 <section id="container" class="">
@@ -11,7 +11,7 @@ include('Head.php');
             <div class="icon-reorder tooltips" data-original-title="Toggle Navigation" data-placement="bottom"><i
                     class="icon_menu"></i></div>
         </div>
-        <?PHP include("Logo.php") ?>
+        <?PHP include(__DIR__ . "/Logo.php") ?>
         <div class="nav search-row" id="top_menu">
             <!--  search form start -->
             <ul class="nav top-menu">
@@ -23,9 +23,9 @@ include('Head.php');
             </ul>
             <!--  search form end -->
         </div>
-        <?PHP include("DropDown.php"); ?>
+        <?PHP include(__DIR__ . "/DropDown.php"); ?>
     </header>
-    <?PHP include("Menu.php") ?>
+    <?PHP include(__DIR__ . "/Menu.php") ?>
 
 </section>
 
@@ -35,8 +35,8 @@ include('Head.php');
             <div class="col-lg-12">
                 <h3 class="page-header"><i class="fa fa-shopping-cart"></i> OPERACION DE VENTAS</h3>
                 <ol class="breadcrumb">
-                    <li><i class="fa fa-home"></i><a href="principal.php">Inicio</a></li>
-                    <li><i class="fa fa-shopping-basket"></i><a href="Ventas.php">Caja</a></li>
+                    <li><i class="fa fa-home"></i><a href="<?php echo htmlspecialchars(app_url('/Controller/AccessUsers.php'), ENT_QUOTES, 'UTF-8'); ?>">Inicio</a></li>
+                    <li><i class="fa fa-shopping-basket"></i><a href="<?php echo htmlspecialchars(app_url('/Controller/Ventas.php'), ENT_QUOTES, 'UTF-8'); ?>">Caja</a></li>
                     <li><i class="fa fa-bolt"></i><span>Atencion rapida</span></li>
                 </ol>
                 <?php if (isset($mensaje) && trim((string) $mensaje) !== ''): ?>
@@ -62,13 +62,13 @@ include('Head.php');
                         <span>Selecciona productos por mesa o para llevar sin salir del flujo de caja.</span>
                     </div>
                     <div class="sales-actions">
-                        <a href="Cliente.php" class="btn btn-default"><i class="icon_contacts_alt"></i> Clientes</a>
-                        <a href="Reporte.php" class="btn btn-primary"><i class="icon_datareport"></i> Reportes</a>
+                        <a href="<?php echo htmlspecialchars(app_url('/Controller/Cliente.php'), ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-default"><i class="icon_contacts_alt"></i> Clientes</a>
+                        <a href="<?php echo htmlspecialchars(app_url('/Controller/ReportesVentas.php'), ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-primary"><i class="icon_datareport"></i> Reportes</a>
                     </div>
                 </header>
                 <div class="panel-body">
                     <div class="pos-products-grid">
-                        <?PHP include("Producto.php"); ?>
+                        <?PHP include(__DIR__ . "/Producto.php"); ?>
                     </div>
                 </div>
             </section>
@@ -82,7 +82,7 @@ include('Head.php');
                 </header>
                 <div class="panel-body">
                     <div id="resultado">
-                        <?PHP include("Pedido.php"); ?>
+                        <?PHP include(__DIR__ . "/Pedido.php"); ?>
                     </div>
                 </div>
             </section>
@@ -90,7 +90,7 @@ include('Head.php');
     </section>
 </section>
 
-<?PHP include("LibraryJs.php"); ?>
+<?PHP include(__DIR__ . "/LibraryJs.php"); ?>
 
 
 </body>

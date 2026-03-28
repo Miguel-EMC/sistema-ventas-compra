@@ -2,6 +2,19 @@
 <html lang="en">
 <?php
 $pageTitle = 'Usuarios';
+$breadcrumbItems = [
+    ['label' => 'Inicio', 'href' => 'principal.php', 'icon' => 'fa fa-home'],
+    ['label' => 'Configuracion', 'href' => 'Usuario.php', 'icon' => 'icon_tools'],
+    ['label' => 'Usuarios'],
+];
+$workspaceTitle = 'Centro de configuracion';
+$workspaceDescription = 'Estas opciones son modulos de mantenimiento. Aqui administras catalogos internos y datos base del sistema.';
+$workspaceItems = [
+    ['label' => 'Usuarios', 'href' => 'Usuario.php', 'icon' => 'icon_profile', 'description' => 'Gestiona accesos, roles y credenciales del sistema.'],
+    ['label' => 'Datos factura', 'href' => 'DatosFactura.php', 'icon' => 'icon_document_alt', 'description' => 'Edita los datos fijos que salen en la facturacion.'],
+    ['label' => 'Moneda', 'href' => 'Moneda.php', 'icon' => 'fa fa-money', 'description' => 'Configura el contexto monetario y la presentacion operativa.'],
+    ['label' => 'Idioma', 'href' => 'Languaje.php', 'icon' => 'fa fa-language', 'description' => 'Define el idioma base usado por la plataforma.'],
+];
 include('Head.php');
 ?>
 
@@ -42,10 +55,11 @@ include('Head.php');
                     </div>
 
                     <ol class="breadcrumb">
-                    <?PHP include ("MenuOpcionesConfiguracion.php");?>
+                    <?PHP include ("BreadcrumbTrail.php");?>
                     </ol>
                 </div>
             </div>
+        <?php include("WorkspaceNav.php"); ?>
         <header class="panel-heading"> Lista de usuarios del sistema</header>
         <header class="panel-heading">
             <div class="panel-body">

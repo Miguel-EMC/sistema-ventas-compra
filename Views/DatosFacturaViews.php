@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php
+$pageTitle = 'Datos Factura';
+$breadcrumbItems = [
+    ['label' => 'Inicio', 'href' => 'principal.php', 'icon' => 'fa fa-home'],
+    ['label' => 'Configuracion', 'href' => 'Usuario.php', 'icon' => 'icon_tools'],
+    ['label' => 'Datos factura'],
+];
+$workspaceTitle = 'Centro de configuracion';
+$workspaceDescription = 'Estas opciones son modulos de mantenimiento. Aqui administras catalogos internos y datos base del sistema.';
+$workspaceItems = [
+    ['label' => 'Usuarios', 'href' => 'Usuario.php', 'icon' => 'icon_profile', 'description' => 'Gestiona accesos, roles y credenciales del sistema.'],
+    ['label' => 'Datos factura', 'href' => 'DatosFactura.php', 'icon' => 'icon_document_alt', 'description' => 'Edita los datos fijos que salen en la facturacion.'],
+    ['label' => 'Moneda', 'href' => 'Moneda.php', 'icon' => 'fa fa-money', 'description' => 'Configura el contexto monetario y la presentacion operativa.'],
+    ['label' => 'Idioma', 'href' => 'Languaje.php', 'icon' => 'fa fa-language', 'description' => 'Define el idioma base usado por la plataforma.'],
+];
 include('Head.php');
 ?>
 
@@ -41,10 +55,11 @@ include('Head.php');
                     </div>
 
                     <ol class="breadcrumb">
-                    <?PHP include ("MenuOpcionesConfiguracion.php");?>
+                    <?PHP include ("BreadcrumbTrail.php");?>
                     </ol>
                 </div>
             </div>
+        <?php include("WorkspaceNav.php"); ?>
 
             <div class="row">
                 <div class="col-lg-12">

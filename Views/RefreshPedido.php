@@ -1,4 +1,3 @@
 <?php
-require('Constants.php');
-include ('Pedido.php');
+include __DIR__ . '/Pedido.php';
 ?>

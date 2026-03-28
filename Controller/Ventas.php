@@ -2,20 +2,25 @@
 require('../Model/Conexion.php');
 require('Constants.php');
 
-if (!isset($_SESSION)) {
-    session_start();
-}
-
-$usuario = $_GET['usuario'];
-$password = $_GET['password'];
-
 $con = new Conexion();
+$currentUser = auth_user();
 
+if ($currentUser !== null) {
+    $usuario = $currentUser['login'];
+    $password = legacy_sentinel_password();
+    $tipo = $currentUser['tipo'];
+    $id_usuario = $currentUser['id_usu'];
+    $nombres = $currentUser['nombre'];
+    $foto = $currentUser['foto'];
+} else {
+    $searchUser = $con->getUser((string) $usuario, (string) $password);
+    $user = $searchUser[0] ?? null;
 
-$searchUser = $con->getUser($usuario, $password);
-$allUsuarios = $con->getAllUserData();
+    if ($user === null) {
+        flash('error', 'Necesitas iniciar sesion para continuar.');
+        redirect(app_url('/index.php'));
+    }
 
-foreach ($searchUser as $user) {
     $tipo = $user['tipo'];
     $id_usuario = $user['id_usu'];
     $nombres = $user['nombre'];
@@ -55,7 +60,7 @@ foreach ($tipoDeMoneda as $moneda){
 }
 
 $allProducto =$con->getAllProducto();
-$menuMain = $con->getMenuMain();
+$menuMain = $tipo === 'VENTAS' ? $con->getMenuMainVentas() : $con->getMenuMain();
 require("../Views/VentasViews.php");
 
 

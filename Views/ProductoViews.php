@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php
+$pageTitle = 'Productos';
+$breadcrumbItems = [
+    ['label' => 'Inicio', 'href' => 'principal.php', 'icon' => 'fa fa-home'],
+    ['label' => 'Catalogo', 'href' => 'Producto.php', 'icon' => 'fa fa-inbox'],
+    ['label' => 'Productos'],
+];
+$workspaceTitle = 'Mantenimiento de catalogo';
+$workspaceDescription = 'Estas opciones organizan la base comercial. Aqui gestionas productos, inventario y tipos que alimentan otras operaciones.';
+$workspaceItems = [
+    ['label' => 'Productos', 'href' => 'Producto.php', 'icon' => 'icon_bag_alt', 'description' => 'Administra los productos disponibles para venta y consulta.'],
+    ['label' => 'Inventario', 'href' => 'Inventario.php', 'icon' => 'icon_refresh', 'description' => 'Controla existencias, activos y movimientos de stock.'],
+    ['label' => 'Tipos de producto', 'href' => 'TipoProducto.php', 'icon' => 'fa fa-tags', 'description' => 'Mantiene las categorias base usadas por el catalogo.'],
+];
 include('Head.php');
 ?>
 <body>
@@ -41,18 +54,11 @@ include('Head.php');
                 </div>
 
                 <ol class="breadcrumb">
-                    <li>
-                        <i class="fa fa-home"></i><a href="principal.php?usuario=<?php echo $usuario; ?>&password=<?php echo $password; ?>">Inicio</a>
-                    </li>
-                    <li>
-                        <i class="fa fa-inbox"></i><a href="Producto.php?usuario=<?php echo $usuario; ?>&password=<?php echo $password; ?>">Producto</a>
-                    </li>
-                    <li>
-                        <i class="fa fa-plus"></i><a href="TipoProducto.php?usuario=<?php echo $usuario; ?>&password=<?php echo $password; ?>">Registrar Tipo Producto</a>
-                    </li>
+                    <?php include("BreadcrumbTrail.php"); ?>
                 </ol>
             </div>
         </div>
+        <?php include("WorkspaceNav.php"); ?>
 
         <header class="panel-heading"> Lista de Productos del sistema</header>
         <header class="panel-heading">

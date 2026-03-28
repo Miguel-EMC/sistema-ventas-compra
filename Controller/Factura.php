@@ -2,19 +2,22 @@
 require('../Model/Conexion.php');
 require('Constants.php');
 
-if (!isset($_SESSION)) {
-    session_start();
-}
-
-$usuario = $_GET['usuario'];
-$password = $_GET['password'];
-
-
 $con = new conexion();
+$currentUser = auth_user();
 
-$onlyUserSession = $con->getUser($usuario,$password);
+if ($currentUser !== null) {
+    $usuario = $currentUser['login'];
+    $password = legacy_sentinel_password();
+    $tipoUsuserio = $currentUser['tipo'];
+} else {
+    $onlyUserSession = $con->getUser((string) $usuario, (string) $password);
+    $user = $onlyUserSession[0] ?? null;
 
-foreach ($onlyUserSession as $user) {
+    if ($user === null) {
+        flash('error', 'Necesitas iniciar sesion para continuar.');
+        redirect(app_url('/index.php'));
+    }
+
     $usuario = $user['login'];
     $password = $user['password'];
     $tipoUsuserio = $user['tipo'];
