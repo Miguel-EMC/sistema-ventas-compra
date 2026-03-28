@@ -10,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
+import { RouterLink } from '@angular/router';
 import { resolveApiError } from '../../core/http/resolve-api-error';
 import { CustomersApiService } from '../customers/customers.api';
 import { BusinessPartner } from '../partners/partners.types';
@@ -38,6 +39,7 @@ import {
     MatListModule,
     MatProgressBarModule,
     MatSelectModule,
+    RouterLink,
   ],
   template: `
     <section class="stack sales-page">
@@ -68,6 +70,27 @@ import {
         <article class="surface stack sales-success">
           <span class="page-kicker">Ultima venta</span>
           <strong>{{ successMessage() }}</strong>
+        </article>
+      }
+
+      @if (!draft()?.cash_session) {
+        <article class="surface surface--muted stack">
+          <span class="page-kicker">Caja requerida</span>
+          <p class="page-description">
+            El POS ya requiere una caja abierta para confirmar ventas. Abre una sesión primero y
+            luego vuelve a este borrador.
+          </p>
+          <div class="cta-row">
+            <a mat-flat-button color="primary" [routerLink]="['/cash']">Ir a Caja</a>
+          </div>
+        </article>
+      } @else {
+        <article class="surface stack">
+          <span class="page-kicker">Sesion activa</span>
+          <strong>
+            {{ draft()?.cash_session?.register_name || 'Caja activa' }}
+            · abierta {{ formatDateTime(draft()?.cash_session?.opened_at ?? null) }}
+          </strong>
         </article>
       }
 
@@ -169,7 +192,7 @@ import {
                   mat-flat-button
                   color="primary"
                   type="submit"
-                  [disabled]="addingItem() || products().length === 0"
+                  [disabled]="addingItem() || products().length === 0 || !draft()?.cash_session"
                 >
                   Agregar al borrador
                 </button>
@@ -274,7 +297,7 @@ import {
                   mat-flat-button
                   color="primary"
                   type="submit"
-                  [disabled]="checkingOut() || (draft()?.items?.length ?? 0) === 0"
+                  [disabled]="checkingOut() || (draft()?.items?.length ?? 0) === 0 || !draft()?.cash_session"
                 >
                   Confirmar venta
                 </button>

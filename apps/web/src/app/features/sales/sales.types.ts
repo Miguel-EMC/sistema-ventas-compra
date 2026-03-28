@@ -29,6 +29,12 @@ export interface SaleDraft {
   channel: string;
   notes: string | null;
   customer?: SalesCustomerSummary | null;
+  cash_session?: {
+    id: number;
+    status: string;
+    opened_at: string | null;
+    register_name: string | null;
+  } | null;
   items: SaleDraftItem[];
   subtotal: number;
   tax_total: number;
@@ -52,6 +58,10 @@ export interface SaleRecord {
   items_count: number;
   payment_methods: string[];
   customer?: SalesCustomerSummary | null;
+  cash_session?: {
+    id: number;
+    register_name: string | null;
+  } | null;
 }
 
 export interface UpdateSaleDraftPayload {

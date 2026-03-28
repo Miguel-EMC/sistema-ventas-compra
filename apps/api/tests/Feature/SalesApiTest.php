@@ -3,10 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Customer;
+use App\Models\CashRegister;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Role;
-use App\Models\Sale;
 use App\Models\StockMovement;
 use App\Models\User;
 use Database\Seeders\CoreReferenceSeeder;
@@ -38,6 +38,14 @@ class SalesApiTest extends TestCase
         );
 
         Sanctum::actingAs($cashier);
+
+        $register = CashRegister::query()->firstOrFail();
+
+        $this->postJson('/api/v1/cash/sessions', [
+            'cash_register_id' => $register->id,
+            'opening_amount' => 40,
+            'notes' => 'Caja abierta para ventas',
+        ])->assertCreated();
 
         $this->getJson('/api/v1/sales/draft')
             ->assertOk()
@@ -71,6 +79,7 @@ class SalesApiTest extends TestCase
         $this->assertDatabaseHas('sales', [
             'id' => $saleId,
             'customer_id' => $customer->id,
+            'cash_session_id' => $this->getOpenSessionIdFor($cashier),
         ]);
 
         $this->assertDatabaseHas('sale_payments', [
@@ -85,6 +94,13 @@ class SalesApiTest extends TestCase
             'quantity' => -2,
         ]);
 
+        $this->assertDatabaseHas('cash_movements', [
+            'reference_type' => 'sale',
+            'reference_id' => $saleId,
+            'type' => 'income',
+            'amount' => 6,
+        ]);
+
         $this->getJson('/api/v1/sales')
             ->assertOk()
             ->assertJsonPath('data.0.id', $saleId);
@@ -97,7 +113,7 @@ class SalesApiTest extends TestCase
         $this->assertSame(8.0, (float) $currentStock);
     }
 
-    public function test_checkout_rejects_insufficient_stock(): void
+    public function test_checkout_requires_open_cash_session(): void
     {
         $this->seed(CoreReferenceSeeder::class);
 
@@ -109,6 +125,41 @@ class SalesApiTest extends TestCase
         );
 
         Sanctum::actingAs($cashier);
+
+        $this->postJson('/api/v1/sales/draft/items', [
+            'product_id' => $product->id,
+            'quantity' => 2,
+        ])->assertCreated();
+
+        $this->postJson('/api/v1/sales', [
+            'payment_method' => 'cash',
+            'amount_paid' => 20,
+            'document_type' => 'ticket',
+        ])->assertUnprocessable()
+            ->assertJsonPath('errors.cash_session.0', 'Debes abrir una caja antes de confirmar ventas.');
+
+        $this->assertDatabaseCount('sales', 0);
+    }
+
+    public function test_checkout_rejects_insufficient_stock_when_cash_is_open(): void
+    {
+        $this->seed(CoreReferenceSeeder::class);
+
+        $cashier = $this->createCashier();
+        $product = $this->createProductWithStock(
+            name: 'Sandwich mixto',
+            salePrice: 5,
+            quantity: 1,
+        );
+
+        Sanctum::actingAs($cashier);
+
+        $register = CashRegister::query()->firstOrFail();
+
+        $this->postJson('/api/v1/cash/sessions', [
+            'cash_register_id' => $register->id,
+            'opening_amount' => 20,
+        ])->assertCreated();
 
         $this->postJson('/api/v1/sales/draft/items', [
             'product_id' => $product->id,
@@ -170,5 +221,13 @@ class SalesApiTest extends TestCase
         ]);
 
         return $product;
+    }
+
+    private function getOpenSessionIdFor(User $user): int
+    {
+        return (int) \App\Models\CashSession::query()
+            ->where('opened_by_id', $user->id)
+            ->where('status', 'open')
+            ->value('id');
     }
 }

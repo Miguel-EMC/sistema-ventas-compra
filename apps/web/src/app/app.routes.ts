@@ -47,6 +47,18 @@ export const routes: Routes = [
         title: 'Clientes | VentasPOS',
       },
       {
+        path: 'cash',
+        loadComponent: () =>
+          import('./features/cash/cash.page').then((m) => m.CashPageComponent),
+        title: 'Caja | VentasPOS',
+      },
+      {
+        path: 'purchases',
+        loadComponent: () =>
+          import('./features/purchases/purchases.page').then((m) => m.PurchasesPageComponent),
+        title: 'Compras | VentasPOS',
+      },
+      {
         path: 'suppliers',
         loadComponent: () =>
           import('./features/suppliers/suppliers.page').then((m) => m.SuppliersPageComponent),

@@ -55,6 +55,49 @@ class CoreReferenceSeeder extends Seeder
             ],
         ]);
 
+        if (!DB::table('company_profiles')->where('is_primary', true)->exists()) {
+            DB::table('company_profiles')->insert([
+                'legal_name' => 'VentasPOS Demo',
+                'trade_name' => 'VentasPOS',
+                'tax_id' => '0999999999001',
+                'email' => 'admin@ventaspos.local',
+                'phone' => '0990000000',
+                'website' => 'https://ventaspos.local',
+                'address_line' => 'Av. Principal 100',
+                'city' => 'Guayaquil',
+                'region' => 'Guayas',
+                'country_code' => 'EC',
+                'is_primary' => true,
+                'metadata' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        foreach ([
+            'currency_code' => 'USD',
+            'locale_code' => 'es-EC',
+            'timezone' => 'America/Guayaquil',
+            'tax_included_prices' => false,
+            'allow_negative_stock' => false,
+            'default_document_type' => 'ticket',
+            'invoice_footer' => 'Gracias por su compra.',
+        ] as $key => $value) {
+            DB::table('system_settings')->updateOrInsert(
+                ['key' => $key],
+                [
+                    'group' => match ($key) {
+                        'tax_included_prices', 'default_document_type', 'invoice_footer' => 'sales',
+                        'allow_negative_stock' => 'stock',
+                        default => 'general',
+                    },
+                    'value' => json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ],
+            );
+        }
+
         $adminRoleId = DB::table('roles')->where('slug', 'admin')->value('id');
 
         User::query()->updateOrCreate(
@@ -86,5 +129,17 @@ class CoreReferenceSeeder extends Seeder
                 'description' => 'Categoria base para activos internos',
             ],
         );
+
+        DB::table('cash_registers')->insertOrIgnore([
+            [
+                'public_id' => (string) Str::uuid(),
+                'name' => 'Caja principal',
+                'code' => 'CJ-01',
+                'location' => 'Mostrador principal',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
     }
 }

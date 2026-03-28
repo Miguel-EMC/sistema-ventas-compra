@@ -41,6 +41,16 @@ class SaleResource extends JsonResource
                     'document_number' => $this->customer->document_number,
                 ];
             }),
+            'cash_session' => $this->whenLoaded('cashSession', function (): ?array {
+                if ($this->cashSession === null) {
+                    return null;
+                }
+
+                return [
+                    'id' => $this->cashSession->id,
+                    'register_name' => $this->cashSession->register?->name,
+                ];
+            }),
         ];
     }
 }

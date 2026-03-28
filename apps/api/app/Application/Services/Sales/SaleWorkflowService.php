@@ -2,6 +2,9 @@
 
 namespace App\Application\Services\Sales;
 
+use App\Application\Services\Cash\CashSessionService;
+use App\Models\CashMovement;
+use App\Models\CashSession;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleDraft;
@@ -17,8 +20,15 @@ use Illuminate\Validation\ValidationException;
 
 class SaleWorkflowService
 {
+    public function __construct(
+        private readonly CashSessionService $cashSessionService,
+    ) {
+    }
+
     public function getCurrentDraft(User $user): SaleDraft
     {
+        $activeSession = $this->cashSessionService->getCurrentSession($user);
+
         $draft = SaleDraft::query()->firstOrCreate(
             [
                 'user_id' => $user->id,
@@ -29,6 +39,12 @@ class SaleWorkflowService
                 'channel' => 'pos',
             ],
         );
+
+        if ($draft->cash_session_id !== $activeSession?->id) {
+            $draft->forceFill([
+                'cash_session_id' => $activeSession?->id,
+            ])->save();
+        }
 
         return $this->loadDraftRelations($draft);
     }
@@ -134,6 +150,13 @@ class SaleWorkflowService
     {
         return DB::transaction(function () use ($user, $payload): Sale {
             $draft = $this->getCurrentDraft($user);
+            $activeSession = $this->cashSessionService->getCurrentSession($user);
+
+            if (! $activeSession instanceof CashSession) {
+                throw ValidationException::withMessages([
+                    'cash_session' => 'Debes abrir una caja antes de confirmar ventas.',
+                ]);
+            }
 
             if ($draft->items->isEmpty()) {
                 throw ValidationException::withMessages([
@@ -199,6 +222,7 @@ class SaleWorkflowService
                 'public_id' => (string) Str::uuid(),
                 'customer_id' => $draft->customer_id,
                 'user_id' => $user->id,
+                'cash_session_id' => $activeSession->id,
                 'status' => 'completed',
                 'document_type' => $payload['document_type'] ?? null,
                 'subtotal' => $subtotal,
@@ -254,6 +278,21 @@ class SaleWorkflowService
                 'paid_at' => now(),
             ]);
 
+            if (($payload['payment_method'] ?? null) === 'cash') {
+                CashMovement::query()->create([
+                    'public_id' => (string) Str::uuid(),
+                    'cash_session_id' => $activeSession->id,
+                    'user_id' => $user->id,
+                    'type' => 'income',
+                    'category' => 'sale',
+                    'amount' => $grandTotal,
+                    'reference_type' => 'sale',
+                    'reference_id' => $sale->id,
+                    'notes' => "Ingreso por venta {$sale->public_id}",
+                    'occurred_at' => now(),
+                ]);
+            }
+
             $draft->update([
                 'status' => 'checked_out',
                 'notes' => $payload['notes'] ?? $draft->notes,
@@ -270,7 +309,7 @@ class SaleWorkflowService
     public function recentSales(): Collection
     {
         return Sale::query()
-            ->with('customer', 'payments')
+            ->with('customer', 'payments', 'cashSession.register')
             ->withCount('items')
             ->orderByDesc('sold_at')
             ->limit(15)
@@ -281,6 +320,7 @@ class SaleWorkflowService
     {
         return $draft->load([
             'customer',
+            'cashSession.register',
             'items.product' => fn ($query) => $query->withSum('stockMovements as current_stock', 'quantity'),
         ]);
     }

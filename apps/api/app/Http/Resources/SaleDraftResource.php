@@ -37,6 +37,18 @@ class SaleDraftResource extends JsonResource
                     'document_number' => $this->customer->document_number,
                 ];
             }),
+            'cash_session' => $this->whenLoaded('cashSession', function (): ?array {
+                if ($this->cashSession === null) {
+                    return null;
+                }
+
+                return [
+                    'id' => $this->cashSession->id,
+                    'status' => $this->cashSession->status,
+                    'opened_at' => $this->cashSession->opened_at?->toIso8601String(),
+                    'register_name' => $this->cashSession->register?->name,
+                ];
+            }),
             'items' => SaleDraftItemResource::collection($items),
             'subtotal' => $subtotal,
             'tax_total' => $taxTotal,

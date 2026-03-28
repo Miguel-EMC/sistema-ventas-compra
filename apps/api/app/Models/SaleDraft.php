@@ -42,6 +42,11 @@ class SaleDraft extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function cashSession(): BelongsTo
+    {
+        return $this->belongsTo(CashSession::class, 'cash_session_id');
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(SaleDraftItem::class)->orderBy('created_at');

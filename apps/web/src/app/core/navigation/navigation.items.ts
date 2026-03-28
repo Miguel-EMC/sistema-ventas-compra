@@ -27,6 +27,16 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     description: 'Base comercial para checkout, facturacion y seguimiento.',
   },
   {
+    label: 'Caja',
+    route: '/cash',
+    description: 'Apertura, cierre y sesiones operativas del POS.',
+  },
+  {
+    label: 'Compras',
+    route: '/purchases',
+    description: 'Ordenes, recepcion de mercaderia e ingreso de stock.',
+  },
+  {
     label: 'Proveedores',
     route: '/suppliers',
     description: 'Terceros para compras, costos y abastecimiento.',
