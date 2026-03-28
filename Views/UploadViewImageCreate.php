@@ -1,76 +1,77 @@
-
-<input id="files" type="file" name="userfile"/>
-<output id="list-miniatura"></output>
-<output id="list-datos"></output>
-
+<?php
+$uploadInstanceId = uniqid('upload-create-', false);
+$fileInputId = $uploadInstanceId . '-file';
+$previewId = $uploadInstanceId . '-preview';
+$detailsId = $uploadInstanceId . '-details';
+?>
+<input id="<?php echo htmlspecialchars($fileInputId, ENT_QUOTES, 'UTF-8'); ?>" type="file" name="userfile" accept="image/*">
+<output id="<?php echo htmlspecialchars($previewId, ENT_QUOTES, 'UTF-8'); ?>"></output>
+<output id="<?php echo htmlspecialchars($detailsId, ENT_QUOTES, 'UTF-8'); ?>"></output>
 
 <script>
-    function handleFileSelect(evt) {
-        evt.stopPropagation();
-        evt.preventDefault();
+    (function () {
+        var fileInput = document.getElementById('<?php echo addslashes($fileInputId); ?>');
+        var preview = document.getElementById('<?php echo addslashes($previewId); ?>');
+        var details = document.getElementById('<?php echo addslashes($detailsId); ?>');
 
-        var files = evt.dataTransfer.files; // FileList object.
-        // files is a FileList of File objects. List some properties.
-        var output = [];
-        for (var i = 0, f; f = files[i]; i++) {
-            var reader = new FileReader();
-
-            // Closure to capture the file information.
-            reader.onload = (function (theFile) {
-                return function (e) {
-                    // Render thumbnail.
-                    var span = document.createElement('span');
-                    span.innerHTML = ['Nombre: ', escape(theFile.name), ' || Tamanio: ', escape(theFile.size), ' bytes || type: ', escape(theFile.type), '<br /><img class="thumb" src="', e.target.result, '" title="', escape(theFile.name), '"style="width:100%;"/><br />'].join('');
-                    document.getElementById('list-miniatura').insertBefore(span, null);
-                };
-            })(f);
-
-            // Read in the image file as a data URL.
-            reader.readAsDataURL(f);
+        if (!fileInput || !preview || !details) {
+            return;
         }
-        document.getElementById('list-datos').innerHTML = '<ul>' + output.join('') + '</ul>';
-    }
 
-    function handleDragOver(evt) {
-        evt.stopPropagation();
-        evt.preventDefault();
-        evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
-    }
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, function (character) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[character];
+            });
+        }
 
-    // Setup the dnd listeners.
-    var dropZone = document.getElementById('drop_zone');
-    dropZone.addEventListener('dragover', handleDragOver, false);
-    dropZone.addEventListener('drop', handleFileSelect, false);
-</script>
+        function clearOutputs() {
+            preview.innerHTML = '';
+            details.innerHTML = '';
+        }
 
-<script>
-    function handleFileSelect(evt) {
-        var files = evt.target.files; // FileList object
+        function appendPreview(file, result) {
+            var span = document.createElement('span');
+            span.innerHTML = '<br><img class="thumb" src="' + result + '" title="' + escapeHtml(file.name) + '" style="width:100%;"><br>';
+            preview.appendChild(span);
+        }
 
-        // Loop through the FileList and render image files as thumbnails.
-        for (var i = 0, f; f = files[i]; i++) {
+        function renderFiles(fileList) {
+            var files = Array.prototype.slice.call(fileList || []);
+            var meta = [];
 
-            // Only process image files.
-            if (!f.type.match('image.*')) {
-                continue;
+            clearOutputs();
+
+            files.forEach(function (file) {
+                if (!file.type || file.type.indexOf('image/') !== 0) {
+                    return;
+                }
+
+                meta.push(
+                    'Nombre: ' + escapeHtml(file.name) +
+                    ' | Tamanio: ' + escapeHtml(file.size) +
+                    ' bytes | Tipo: ' + escapeHtml(file.type)
+                );
+
+                var reader = new FileReader();
+                reader.onload = function (event) {
+                    appendPreview(file, event.target.result);
+                };
+                reader.readAsDataURL(file);
+            });
+
+            if (meta.length > 0) {
+                details.innerHTML = '<ul><li>' + meta.join('</li><li>') + '</li></ul>';
             }
-
-            var reader = new FileReader();
-
-            // Closure to capture the file information.
-            reader.onload = (function (theFile) {
-                return function (e) {
-                    // Render thumbnail.
-                    var span = document.createElement('span');
-                    span.innerHTML = ['<br /><img class="thumb" src="', e.target.result, '" title="', escape(theFile.name), '" style="width:100%;"/><br />'].join('');
-                    document.getElementById('list-miniatura').insertBefore(span, null);
-                };
-            })(f);
-
-            // Read in the image file as a data URL.
-            reader.readAsDataURL(f);
         }
-    }
 
-    document.getElementById('files').addEventListener('change', handleFileSelect, false);
+        fileInput.addEventListener('change', function (event) {
+            renderFiles(event.target.files);
+        }, false);
+    })();
 </script>

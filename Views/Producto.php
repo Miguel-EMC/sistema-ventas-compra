@@ -1,41 +1,44 @@
 <?php
-$row = 1;
+$hasProducts = false;
 while ($product = mysqli_fetch_array($allProducto)) {
-    if ($row > 4) {
-        echo "</tr><tr class='success'>";
-        $row = 1;
-    }
+    $hasProducts = true;
     ?>
-    <td background="<?PHP echo $urlViews; ?>img/menuPOS.jpg" align="center">
-        <div style="width: 112px">
-            <div class="single-product">
-                <div class="product-f-image">
-                    <img src="<?PHP echo $urlViews . $product['imagen']; ?>" width="90" height="90" class="imgRedonda">
-                    <div class="product-hover">
-                        <a onclick="insertarPedidoMesa('<?PHP echo $product['idproducto'];?>','<?PHP echo $id_usuario;?>')" data-name="Mouse" style="text-decoration: none; cursor: pointer;"
-                           class="add-to-cart-link">Mesa</a>
-                        <a onclick="insertarPedidoLlevar('<?PHP echo $product['idproducto'];?>','<?PHP echo $id_usuario;?>')" data-name="Mouse" style="text-decoration: none; cursor: pointer;"
-                           class="view-details-link">Llevar</a>
-                    </div>
-
-                    <span style="color: #FFFFFF">
-                    <b>
-                        <?PHP echo $product['nombreProducto'];
-                        echo '<br>';
-                        echo $product['precioVenta'];
-                        echo '&nbsp;';
-                        echo $tipoMonedaElegida; ?>   .
-                    </b>
-                        </span>
-                </div>
+    <article class="pos-product-card">
+        <div class="pos-product-media">
+            <img
+                src="<?php echo htmlspecialchars($urlViews . $product['imagen'], ENT_QUOTES, 'UTF-8'); ?>"
+                alt="<?php echo htmlspecialchars((string) $product['nombreProducto'], ENT_QUOTES, 'UTF-8'); ?>"
+                class="imgRedonda"
+            >
+        </div>
+        <div class="pos-product-copy">
+            <h4 class="pos-product-name"><?php echo htmlspecialchars((string) $product['nombreProducto'], ENT_QUOTES, 'UTF-8'); ?></h4>
+            <div class="pos-product-price">
+                <?php echo htmlspecialchars((string) $product['precioVenta'], ENT_QUOTES, 'UTF-8'); ?>
+                <?php echo htmlspecialchars((string) $tipoMonedaElegida, ENT_QUOTES, 'UTF-8'); ?>
             </div>
         </div>
-    </td>
+        <div class="pos-product-actions">
+            <button
+                type="button"
+                class="pos-product-action pos-product-action--mesa"
+                onclick="insertarPedidoMesa('<?php echo $product['idproducto']; ?>','<?php echo $id_usuario; ?>')"
+            >
+                Mesa
+            </button>
+            <button
+                type="button"
+                class="pos-product-action"
+                onclick="insertarPedidoLlevar('<?php echo $product['idproducto']; ?>','<?php echo $id_usuario; ?>')"
+            >
+                Llevar
+            </button>
+        </div>
+    </article>
     <?php
-    $row++;
 }
 
-echo '</tr>';
-
-
+if (!$hasProducts) {
+    echo '<div class="alert alert-warning">No hay productos disponibles para mostrar en caja.</div>';
+}
 ?>

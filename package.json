@@ -1,0 +1,11 @@
+{
+  "name": "ventaspos-ui",
+  "private": true,
+  "scripts": {
+    "build:css": "sass --no-source-map resources/scss/app.scss public/assets/css/app.css",
+    "watch:css": "sass --watch resources/scss/app.scss:public/assets/css/app.css"
+  },
+  "devDependencies": {
+    "sass": "^1.93.0"
+  }
+}

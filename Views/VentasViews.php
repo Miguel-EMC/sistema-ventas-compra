@@ -1,76 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php
+$pageTitle = 'Ventas';
 include('Head.php');
 ?>
 <body>
 <section id="container" class="">
     <header class="header dark-bg">
-        <style>
-            .textbox {
-                border: 1px solid #6a98e6;
-                font-size: 23px;
-                font-family: Arial, Verdana;
-                padding-left: 7px;
-                padding-right: 7px;
-                padding-top: 10px;
-                padding-bottom: 1px;
-                border-radius: 4px;
-                -moz-border-radius: 4px;
-                -webkit-border-radius: 4px;
-                -o-border-radius: 4px;
-                background: #FFFFFF;
-                background: linear-gradient(left, #FFFFFF, #6a98e6);
-                background: -moz-linear-gradient(left, #FFFFFF, #F7F9FA);
-                background: -webkit-linear-gradient(left, #FFFFFF, #F7F9FA);
-                background: -o-linear-gradient(left, #FFFFFF, #F7F9FA);
-                color: #2E3133;
-            }
-
-            .textbox:hover {
-                color: #2E3133;
-                border-color: #ff0000;
-            }
-        </style>
-        <style>
-            .textbox2 {
-                border: 1px solid #6a98e6;
-                font-size: 23px;
-                font-family: Arial, Verdana;
-                padding-left: 7px;
-                padding-right: 7px;
-                padding-top: 0px;
-                padding-bottom: 1px;
-                border-radius: 4px;
-                -moz-border-radius: 4px;
-                -webkit-border-radius: 4px;
-                -o-border-radius: 4px;
-                background: #FFFFFF;
-                background: linear-gradient(left, #FFFFFF, #6a98e6);
-                background: -moz-linear-gradient(left, #FFFFFF, #F7F9FA);
-                background: -webkit-linear-gradient(left, #FFFFFF, #F7F9FA);
-                background: -o-linear-gradient(left, #FFFFFF, #F7F9FA);
-                color: #2E3133;
-            }
-
-            .textbox2:hover {
-                color: #2E3133;
-                border-color: #ff0000;
-            }
-        </style>
-        <style>
-            p:hover {
-                background-color: yellow;
-                border-color: #ff0000;
-            }
-        </style>
-        <style type="text/css">
-            a.nounderline:link {
-                text-decoration: none;
-            }
-        </style>
-
-
         <div class="toggle-nav">
             <div class="icon-reorder tooltips" data-original-title="Toggle Navigation" data-placement="bottom"><i
                     class="icon_menu"></i></div>
@@ -93,78 +29,66 @@ include('Head.php');
 
 </section>
 
-<!--sidebar end-->
-<!--main content start-->
 <section id="main-content">
     <section class="wrapper">
         <div class="row">
             <div class="col-lg-12">
-            </div></div>
-        </div>
-<br><br><br>
-        <div class="row">
-            <div class="col-md-12">
-                <div class="panel panel-default">
-                    <!-- page start-->
-                    <div class="row">
-                        <div class="col-sm-7">
-
-                            <section class="panel">
-                                <div class="row">
-                                    <header class="panel-heading tab-bg-primary ">
-
-                                        <ul class="nav nav-tabs">
-                                            <li class="active">
-                                                <a data-toggle="tab" href="#home">PRODUCTOS</a>
-                                            </li>
-                                        </ul>
-
-                                    </header>
-                                    <div class="panel-body">
-                                        <div class="tab-content">
-                                            <div id="home" class="tab-pane active">
-
-<!--                                                id="dataTables-example"-->
-
-                                                <table class="table table-striped table-bordered table-hover">
-                                                    <thead>
-                                                    <tr>
-                                                     <?PHP
-                                                       include ("Producto.php");
-                                                     ?>
-
-                                                    </tr>
-                                                    </thead>
-
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </section>
-
-                        </div>
-
-                        <div class="col-sm-5">
-
-                            <div id="resultado">
-                             <?PHP
-                               include ("Pedido.php");
-                             ?>
-                            </div>
-
-                        </div>
-
+                <h3 class="page-header"><i class="fa fa-shopping-cart"></i> OPERACION DE VENTAS</h3>
+                <ol class="breadcrumb">
+                    <li><i class="fa fa-home"></i><a href="principal.php">Inicio</a></li>
+                    <li><i class="fa fa-shopping-basket"></i><a href="Ventas.php">Caja</a></li>
+                    <li><i class="fa fa-bolt"></i><span>Atencion rapida</span></li>
+                </ol>
+                <?php if (isset($mensaje) && trim((string) $mensaje) !== ''): ?>
+                    <div class="<?php echo htmlspecialchars((string) ($alerta ?? 'alert alert-success'), ENT_QUOTES, 'UTF-8'); ?>" role="alert">
+                        <strong><?php echo htmlspecialchars((string) $mensaje, ENT_QUOTES, 'UTF-8'); ?></strong>
                     </div>
-                </div>
-
-
+                <?php endif; ?>
             </div>
         </div>
 
+        <div class="sales-summary">
+            <span class="sales-summary__item">Operador: <?php echo htmlspecialchars((string) ($userLogueado ?? 'Usuario'), ENT_QUOTES, 'UTF-8'); ?></span>
+            <span class="sales-summary__item">Rol: <?php echo htmlspecialchars((string) ($tipo ?? 'VENTAS'), ENT_QUOTES, 'UTF-8'); ?></span>
+            <span class="sales-summary__item">Moneda: <?php echo htmlspecialchars((string) ($tipoMonedaElegida ?? 'Local'), ENT_QUOTES, 'UTF-8'); ?></span>
+            <span class="sales-summary__item">Fecha: <?php echo htmlspecialchars(date('d/m/Y'), ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+
+        <div class="sales-shell">
+            <section class="panel sales-panel">
+                <header class="panel-heading sales-panel__header">
+                    <div class="sales-panel__title">
+                        <strong>Catalogo de productos</strong>
+                        <span>Selecciona productos por mesa o para llevar sin salir del flujo de caja.</span>
+                    </div>
+                    <div class="sales-actions">
+                        <a href="Cliente.php" class="btn btn-default"><i class="icon_contacts_alt"></i> Clientes</a>
+                        <a href="Reporte.php" class="btn btn-primary"><i class="icon_datareport"></i> Reportes</a>
+                    </div>
+                </header>
+                <div class="panel-body">
+                    <div class="pos-products-grid">
+                        <?PHP include("Producto.php"); ?>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel sales-panel sales-order-panel">
+                <header class="panel-heading sales-panel__header">
+                    <div class="sales-panel__title">
+                        <strong>Resumen del pedido</strong>
+                        <span>Confirma cantidades, abre el cobro y cierra la venta desde este panel.</span>
+                    </div>
+                </header>
+                <div class="panel-body">
+                    <div id="resultado">
+                        <?PHP include("Pedido.php"); ?>
+                    </div>
+                </div>
+            </section>
+        </div>
     </section>
 </section>
-<!--main content end-->
 
 <?PHP include("LibraryJs.php"); ?>
 

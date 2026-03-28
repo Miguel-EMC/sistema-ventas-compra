@@ -1,0 +1,62 @@
+$color-bg: #f3f5f7;
+$color-surface: #ffffff;
+$color-surface-soft: #f8fafc;
+$color-border: #d7dee8;
+$color-border-strong: #c2cedc;
+$color-text: #111827;
+$color-text-muted: #5b6778;
+$color-primary: #1f6feb;
+$color-primary-strong: #1858ba;
+$color-primary-soft: #e6efff;
+$color-success: #0f8f53;
+$color-danger: #ce3b3b;
+$color-warning: #c68215;
+$color-ink: #0f172a;
+$color-overlay: rgba(15, 23, 42, 0.55);
+$color-shadow: rgba(15, 23, 42, 0.1);
+
+$radius-xs: 8px;
+$radius-sm: 12px;
+$radius-md: 16px;
+$radius-lg: 22px;
+
+$shadow-sm: 0 14px 34px rgba(15, 23, 42, 0.08);
+$shadow-md: 0 20px 48px rgba(15, 23, 42, 0.1);
+$shadow-lg: 0 28px 70px rgba(15, 23, 42, 0.14);
+
+$gutter: 12px;
+$header-height: 68px;
+$sidebar-width: 280px;
+$transition-fast: 180ms ease;
+$transition-slow: 260ms ease;
+
+:root {
+    --app-bg: #{$color-bg};
+    --app-surface: #{$color-surface};
+    --app-surface-soft: #{$color-surface-soft};
+    --app-border: #{$color-border};
+    --app-border-strong: #{$color-border-strong};
+    --app-text: #{$color-text};
+    --app-text-muted: #{$color-text-muted};
+    --app-primary: #{$color-primary};
+    --app-primary-strong: #{$color-primary-strong};
+    --app-primary-soft: #{$color-primary-soft};
+    --app-success: #{$color-success};
+    --app-danger: #{$color-danger};
+    --app-warning: #{$color-warning};
+    --app-ink: #{$color-ink};
+    --app-overlay: #{$color-overlay};
+    --app-shadow: #{$color-shadow};
+    --app-radius-xs: #{$radius-xs};
+    --app-radius-sm: #{$radius-sm};
+    --app-radius-md: #{$radius-md};
+    --app-radius-lg: #{$radius-lg};
+    --app-shadow-sm: #{$shadow-sm};
+    --app-shadow-md: #{$shadow-md};
+    --app-shadow-lg: #{$shadow-lg};
+    --app-gutter: #{$gutter};
+    --app-header-height: #{$header-height};
+    --app-sidebar-width: #{$sidebar-width};
+    --app-transition-fast: #{$transition-fast};
+    --app-transition-slow: #{$transition-slow};
+}

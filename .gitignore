@@ -1,4 +1,5 @@
 /vendor/
+/node_modules/
 /.idea/
 /.vscode/
 /.phpunit.result.cache
@@ -7,6 +8,11 @@
 /storage/uploads/*
 !/storage/uploads/.gitkeep
 !/storage/uploads/fotoproducto/
-/public/assets/
+/public/assets/*
+!/public/assets/css/
+/public/assets/css/*
+!/public/assets/css/app.css
+!/public/assets/js/
+/public/assets/js/*
+!/public/assets/js/app.js
 /.env
-

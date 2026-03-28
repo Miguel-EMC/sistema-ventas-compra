@@ -27,5 +27,5 @@ foreach ($getTotalPreventa as $preVentaTotal){
     $preventa = $preVentaTotal['total'];
 }
 
-require('../Views/FacturaViews.php');
+require('../Views/Facturaviews.php');
 ?>

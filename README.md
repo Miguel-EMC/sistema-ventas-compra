@@ -12,6 +12,8 @@ Primera fase de modernizacion gradual para PHP 8.5.
 - Capa PDO nueva para auth, menu, settings, uploads y repositorios base
 - Shim `mysqli` para que el codigo legacy siga funcionando sin la extension `mysqli`
 - `public/assets` como fuente publica de assets legacy
+- Core UI propio en SCSS con compilacion a `public/assets/css/app.css`
+- Layout global sin Bootstrap y con JS propio para sidebar, dropdowns, modales y tabs
 
 ## Arranque local
 
@@ -19,13 +21,20 @@ Primera fase de modernizacion gradual para PHP 8.5.
 
    ```bash
    composer install
+   npm install
    ```
 
 2. Revisa `.env` y ajusta `APP_URL`, `APP_ASSET_URL` y credenciales de base.
 
-3. Asegura que Apache apunte al proyecto o a `public/` segun tu despliegue.
+3. Compila el CSS del template:
 
-4. Si tu base todavia no tiene `password_hash`, aplica las migraciones SQL de `database/migrations/`.
+   ```bash
+   npm run build:css
+   ```
+
+4. Asegura que Apache apunte al proyecto o a `public/` segun tu despliegue.
+
+5. Si tu base todavia no tiene `password_hash`, aplica las migraciones SQL de `database/migrations/`.
 
 ## Migraciones recomendadas
 
@@ -48,3 +57,4 @@ vendor/bin/rector process --dry-run
 - La autenticacion nueva ya usa hash y migra usuarios legacy al iniciar sesion.
 - El modelo `Model/Conexion.php` sigue existiendo como puente de compatibilidad.
 - Todavia quedan controladores y vistas legacy por mover a `app/` en siguientes fases.
+- La UI nueva vive en `resources/scss/` y cualquier cambio visual global debe salir de ahi.

@@ -1,6 +1,6 @@
-<header class="panel-heading" id="imprimible">>
+<header class="panel-heading" id="imprimible">
     <div class="panel-body">
-        <div align="right">
+        <div class="report-toolbar">
             <button href="#add" title="" data-placement="left" data-toggle="modal"
                     class="btn btn-primary tooltips" type="button"
                     data-original-title="Buscar Reporte por mes"><span
