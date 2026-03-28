@@ -505,6 +505,274 @@ textarea.form-control {
     font-weight: 700;
 }
 
+.app-modal-dialog {
+    width: min(760px, 100%);
+}
+
+.app-modal-dialog--wide,
+#mdialTamanio {
+    width: min(1120px, 100%);
+}
+
+.app-modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 64px);
+}
+
+.app-modal-content--compact {
+    max-width: 680px;
+    margin-inline: auto;
+}
+
+.app-modal-header {
+    align-items: flex-start;
+    padding: 20px 24px;
+}
+
+.app-modal-header h3 {
+    flex: 1 1 auto;
+    margin: 0;
+    color: $color-text;
+    font-size: 1.08rem;
+    font-weight: 800;
+    line-height: 1.4;
+    text-align: left;
+}
+
+.app-modal-header h3[align="center"] {
+    text-align: left;
+}
+
+.app-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 22px 24px;
+    overflow-y: auto;
+}
+
+.app-modal-body br {
+    display: none;
+}
+
+.app-modal-body--compact {
+    gap: 14px;
+}
+
+.app-modal-form {
+    margin: 0;
+}
+
+.app-modal-panel,
+.app-modal-body > .panel,
+.app-modal-body > section.panel {
+    margin: 0;
+    box-shadow: none;
+}
+
+.app-modal-panel {
+    padding: 18px;
+    background: $color-surface-soft;
+}
+
+.app-modal-panel > div:first-child {
+    margin-bottom: 12px;
+}
+
+.app-modal-layout {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    gap: 24px;
+    margin: 0;
+}
+
+.app-modal-layout > [class*="col-"] {
+    width: auto;
+    max-width: none;
+    padding: 0;
+}
+
+.app-modal-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.app-modal-main {
+    min-width: 0;
+}
+
+.app-modal-main .app-modal-panel {
+    background: $color-surface;
+}
+
+.app-modal-preview {
+    display: block;
+    width: 100%;
+    max-width: 240px;
+    max-height: 240px;
+    object-fit: cover;
+    margin: 0 auto 12px;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    background: $color-surface-soft;
+}
+
+.app-modal-preview.thumb,
+.app-upload__thumb {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    max-height: none;
+    margin-bottom: 0;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    background: $color-surface-soft;
+}
+
+.app-upload {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.app-upload__input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px dashed $color-border-strong;
+    border-radius: $radius-sm;
+    background: #ffffff;
+    color: $color-text;
+}
+
+.app-upload__preview,
+.app-upload__details {
+    display: block;
+    margin: 0;
+}
+
+.app-upload__details ul {
+    margin: 0;
+    padding-left: 18px;
+    color: $color-text-muted;
+    font-size: 0.82rem;
+}
+
+.app-form-row {
+    align-items: flex-start;
+    margin: 0;
+}
+
+.app-form-row + .app-form-row {
+    padding-top: 16px;
+    border-top: 1px solid rgba(215, 222, 232, 0.8);
+}
+
+.app-form-row > .control-label,
+.app-form-row > label.control-label,
+.app-form-row > label[class*="col-"] {
+    flex: 0 0 176px;
+    max-width: 176px;
+    margin: 0;
+    padding-left: 0;
+    padding-right: 16px;
+    padding-top: 12px;
+}
+
+.app-form-row > [class*="col-"] {
+    flex: 1 1 0;
+    max-width: none;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.app-form-row > [class*="col-"] .form-control,
+.app-form-row > [class*="col-"] .textbox,
+.app-form-row > [class*="col-"] .textbox2,
+.app-form-row > [class*="col-"] select {
+    width: 100%;
+}
+
+.app-modal-main .form-group {
+    margin-bottom: 0;
+}
+
+.app-modal-main .form-group + .form-group {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(215, 222, 232, 0.8);
+}
+
+.app-modal-main .form-group > label,
+.app-modal-main .form-group > [class*="col-"] {
+    min-height: 0;
+}
+
+.app-modal-footer {
+    padding: 16px 24px 24px;
+    background: $color-surface;
+}
+
+.app-modal-footer .btn {
+    min-width: 148px;
+}
+
+.app-confirm-modal {
+    z-index: 2400;
+}
+
+.app-confirm-dialog {
+    width: min(540px, 100%);
+}
+
+.app-confirm-body {
+    padding-top: 18px;
+}
+
+.app-confirm-lead {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.app-confirm-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    background: rgba(206, 59, 59, 0.12);
+    color: $color-danger;
+    font-size: 1.35rem;
+}
+
+.app-confirm-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.app-confirm-message,
+.app-confirm-details {
+    margin: 0;
+}
+
+.app-confirm-message {
+    color: $color-text;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.app-confirm-details {
+    color: $color-text-muted;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
 .nav-tabs {
     display: flex;
     flex-wrap: wrap;
@@ -517,6 +785,51 @@ textarea.form-control {
 
 .nav-tabs > li {
     margin: 0;
+}
+
+@media (max-width: 991px) {
+    .app-modal-content {
+        max-height: calc(100vh - 32px);
+    }
+
+    .app-modal-body,
+    .app-modal-footer,
+    .app-modal-header {
+        padding-inline: 18px;
+    }
+
+    .app-modal-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .app-form-row > .control-label,
+    .app-form-row > label.control-label,
+    .app-form-row > label[class*="col-"],
+    .app-form-row > [class*="col-"] {
+        flex: 0 0 100%;
+        max-width: 100%;
+        padding-right: 0;
+    }
+
+    .app-form-row > .control-label,
+    .app-form-row > label.control-label,
+    .app-form-row > label[class*="col-"] {
+        padding-top: 0;
+        margin-bottom: 8px;
+    }
+
+    .app-modal-footer {
+        justify-content: stretch;
+    }
+
+    .app-modal-footer .btn {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .app-confirm-lead {
+        grid-template-columns: 1fr;
+    }
 }
 
 .nav-tabs > li > a {

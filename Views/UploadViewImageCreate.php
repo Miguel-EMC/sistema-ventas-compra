@@ -4,9 +4,17 @@ $fileInputId = $uploadInstanceId . '-file';
 $previewId = $uploadInstanceId . '-preview';
 $detailsId = $uploadInstanceId . '-details';
 ?>
-<input id="<?php echo htmlspecialchars($fileInputId, ENT_QUOTES, 'UTF-8'); ?>" type="file" name="userfile" accept="image/*">
-<output id="<?php echo htmlspecialchars($previewId, ENT_QUOTES, 'UTF-8'); ?>"></output>
-<output id="<?php echo htmlspecialchars($detailsId, ENT_QUOTES, 'UTF-8'); ?>"></output>
+<div class="app-upload">
+    <input
+        class="app-upload__input"
+        id="<?php echo htmlspecialchars($fileInputId, ENT_QUOTES, 'UTF-8'); ?>"
+        type="file"
+        name="userfile"
+        accept="image/*"
+    >
+    <output class="app-upload__preview" id="<?php echo htmlspecialchars($previewId, ENT_QUOTES, 'UTF-8'); ?>"></output>
+    <output class="app-upload__details" id="<?php echo htmlspecialchars($detailsId, ENT_QUOTES, 'UTF-8'); ?>"></output>
+</div>
 
 <script>
     (function () {
@@ -37,7 +45,7 @@ $detailsId = $uploadInstanceId . '-details';
 
         function appendPreview(file, result) {
             var span = document.createElement('span');
-            span.innerHTML = '<br><img class="thumb" src="' + result + '" title="' + escapeHtml(file.name) + '" style="width:100%;"><br>';
+            span.innerHTML = '<img class="thumb app-upload__thumb" src="' + result + '" title="' + escapeHtml(file.name) + '">';
             preview.appendChild(span);
         }
 
