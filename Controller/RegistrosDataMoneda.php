@@ -6,8 +6,8 @@ if (!isset($_SESSION)) {
     session_start();
 }
 
-$usuarioLogin = $_POST['usuarioLogin'];
-$passwordLogin = $_POST['passwordLogin'];
+$usuarioLogin = $_POST['usuarioLogin'] ?? $_GET['usuarioLogin'] ?? ($_SESSION['auth']['login'] ?? '');
+$passwordLogin = $_POST['passwordLogin'] ?? $_GET['passwordLogin'] ?? legacy_sentinel_password();
 
 $con = new conexion();
 
@@ -17,8 +17,8 @@ $menuMain = $con->getMenuMain();
 
 if (isset($_POST['update_data_moneda'])) {
 
-    $usuarioLogin = $_POST['usuarioLogin'];
-    $passwordLogin = $_POST['passwordLogin'];
+    $usuarioLogin = $_POST['usuarioLogin'] ?? $usuarioLogin;
+    $passwordLogin = $_POST['passwordLogin'] ?? $passwordLogin;
     $idMoneda = $_POST['idMoneda'];
     $moneda = $_POST['moneda'];
 
@@ -96,7 +96,7 @@ if (isset($_POST['update_data_moneda'])) {
     $updateMensaje = $con->updateMensajeAlert($mensaje, $alerta);
     $updateDatosMoneda = $con->updateDataMoneda($idMoneda, $pais, $tipoMoneda, $contexto);
 
-    header("Location: Moneda.php?usuario=$usuarioLogin&password=$passwordLogin&estado='Activo'");
+    header("Location: Moneda.php?estado=Activo");
 
 
 

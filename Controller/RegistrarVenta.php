@@ -142,7 +142,7 @@ if (isset($_GET['RegistarVenta'])) {
     $cleanDataCliente = $con->cleanClientData();
     $cleanDataPreventa = $con->cleanRegistroPreventa();
 
- header("Location: Ventas.php?usuario=$login&password=$password");
+ header("Location: Ventas.php?estado=Activo");
 
 }
 

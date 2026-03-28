@@ -2,7 +2,6 @@
 <!-- javascripts -->
 <script src="<?php echo $urlViews; ?>js/jquery.js"></script>
 <script src="<?php echo $urlViews; ?>js/jquery-ui-1.10.4.min.js"></script>
-<script src="<?php echo $urlViews; ?>js/jquery-1.8.3.min.js"></script>
 <script type="text/javascript" src="<?php echo $urlViews; ?>js/jquery-ui-1.9.2.custom.min.js"></script>
 <!-- bootstrap -->
 <script src="<?php echo $urlViews; ?>js/bootstrap.min.js"></script>
@@ -68,7 +67,7 @@
 
 
 <!--<script src="--><?php //echo $urlViews; ?><!--/js/print/jquery-1.4.4.min.js" type="text/javascript"></script>-->
-<script src="<?php echo $urlViews; ?>/js/print/jquery.printPage.js" type="text/javascript"></script>
+<script src="<?php echo $urlViews; ?>js/print/jquery.printPage.js" type="text/javascript"></script>
 <script>
     $(document).ready(function () {
         $(".btnPrint").printPage();

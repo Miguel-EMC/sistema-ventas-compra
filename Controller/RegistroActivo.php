@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 require('../Model/Conexion.php');
 require('Constants.php');
 
@@ -6,137 +9,71 @@ if (!isset($_SESSION)) {
     session_start();
 }
 
+$usuarioLogin = $_POST['usuarioLogin'] ?? $_GET['usuarioLogin'] ?? ($_SESSION['auth']['login'] ?? '');
+$passwordLogin = $_POST['passwordLogin'] ?? $_GET['passwordLogin'] ?? legacy_sentinel_password();
 
-$usuarioLogin = $_POST['usuarioLogin'];
-$passwordLogin = $_POST['passwordLogin'];
-
-$con = new conexion();
-
+$con = new Conexion();
 
 if (isset($_POST['nuevo_Producto'])) {
-
-    $codigo= $_POST['codigo'];
-    $nombreProducto= $_POST['descripcion'];
+    $codigo = $_POST['codigo'];
+    $nombreProducto = $_POST['descripcion'];
     $cantidad = $_POST['cantidad'];
     $fechaRegistro = $_POST['fechaRegistro'];
-    $proveedor =null;
 
-    if($_FILES['userfile']['name']!=""){
-
-        $ruta = "fotoproducto/";
-        opendir($ruta);
-        $destino = $ruta.$_FILES['userfile']['name'];
-
-
-        $nombre_archivo = ADDRESS . $_FILES['userfile']['name'];
-        $tipo_archivo = $_FILES['userfile']['type'];
-        $tamano_archivo = $_FILES['userfile']['size'];
-
-
-        $nuevo_archivo= "fotoproducto/" . substr($tipo_archivo,6,4);
-
-
-        if (!((strpos($tipo_archivo, "gif") || strpos($tipo_archivo, "jpeg") || strpos($tipo_archivo, "png")) && ($tamano_archivo < 5000000))) {
-            cuadro_error("La extensión o el tamaño de los archivos no es correcta, Se permiten archivos .gif o .jpg de 5 Mb máximo");
-
-        }else{
-            if (move_uploaded_file($_FILES['userfile']['tmp_name'], $nombre_archivo)){
-                rename($nombre_archivo,$nuevo_archivo);
-                //  cuadro_mensaje("El archivo ha sido cargado correctamente");
-            }else{
-                cuadro_error("Ocurrió algún error al subir el archivo. No pudo guardarse");
-            }
+    if (!empty($_FILES['userfile']['name'])) {
+        try {
+            $destino = upload_service()->storeUploadedImage($_FILES['userfile']);
+        } catch (RuntimeException $exception) {
+            flash('error', $exception->getMessage());
+            header("Location: Inventario.php?estado=Activo");
+            exit;
         }
-    }
-
-    
-    else{
+    } else {
         $destino = "fotoUsuario/user.png";
     }
 
-    $mensaje = "Se registro un nuevo Activo  correctamente !!!";
+    $mensaje = "Se registro un nuevo Activo correctamente";
     $alerta = "alert alert-success";
-
-    $updateMensaje = $con->updateMensajeAlert($mensaje, $alerta);
-    $registerActivo = $con->registerNewActivo($destino,$codigo,$nombreProducto,$cantidad,$fechaRegistro);
-
-
+    $con->updateMensajeAlert($mensaje, $alerta);
+    $con->registerNewActivo($destino, $codigo, $nombreProducto, $cantidad, $fechaRegistro);
 }
-
-
 
 if (isset($_GET['idborrar'])) {
-    $usuarioLogin = $_GET['usuarioLogin'];
-    $passwordLogin = $_GET['passwordLogin'];
+    $usuarioLogin = $_GET['usuarioLogin'] ?? $usuarioLogin;
+    $passwordLogin = $_GET['passwordLogin'] ?? $passwordLogin;
     $idborrar = $_GET['idborrar'];
 
-    $mensaje = "Se elimino  los datos del producto correctamente !!!";
+    $mensaje = "Se elimino los datos del activo correctamente";
     $alerta = "alert alert-danger";
-    $updateMensaje = $con->updateMensajeAlert($mensaje, $alerta);
-
-    $deleteActivo = $con->deleteActivo($idborrar);
-
-
+    $con->updateMensajeAlert($mensaje, $alerta);
+    $con->deleteActivo($idborrar);
 }
 
-
 if (isset($_POST['update_producto'])) {
-
     $idproducto = $_POST['idactivo'];
     $imagen = $_POST['imagen'];
-    $codigo= $_POST['codigo'];
-    $nombreProducto= $_POST['descripcion'];
+    $codigo = $_POST['codigo'];
+    $nombreProducto = $_POST['descripcion'];
     $cantidad = $_POST['cantidad'];
     $fechaRegistro = date("Y-m-d");
-    $proveedor =null;
 
-
-    if($_FILES['userfileEdit']['name']!=""){
-
-        $ruta = "fotoproducto/";
-        opendir($ruta);
-        $destino = $ruta.$_FILES['userfileEdit']['name'];
-
-
-        $nombre_archivo = ADDRESS . $_FILES['userfileEdit']['name'];
-        $tipo_archivo = $_FILES['userfileEdit']['type'];
-        $tamano_archivo = $_FILES['userfileEdit']['size'];
-
-
-        $nuevo_archivo= "fotoproducto/" . substr($tipo_archivo,6,4);
-
-
-        if (!((strpos($tipo_archivo, "gif") || strpos($tipo_archivo, "jpeg") || strpos($tipo_archivo, "png")) && ($tamano_archivo < 5000000))) {
-            cuadro_error("La extensión o el tamaño de los archivos no es correcta, Se permiten archivos .gif o .jpg de 5 Mb máximo");
-
-        }else{
-            if (move_uploaded_file($_FILES['userfileEdit']['tmp_name'], $nombre_archivo)){
-                rename($nombre_archivo,$nuevo_archivo);
-            }else{
-                cuadro_error("Ocurrió algún error al subir el archivo. No pudo guardarse");
-            }
+    if (!empty($_FILES['userfileEdit']['name'])) {
+        try {
+            $destino = upload_service()->storeUploadedImage($_FILES['userfileEdit']);
+        } catch (RuntimeException $exception) {
+            flash('error', $exception->getMessage());
+            header("Location: Inventario.php?estado=Activo");
+            exit;
         }
-    }
-
-
-    else{
+    } else {
         $destino = $imagen;
     }
 
-    $mensaje = "Se Actualizo  los datos del Producto correctamente !!!";
+    $mensaje = "Se Actualizo los datos del activo correctamente";
     $alerta = "alert alert-info";
-
-    $updateMensaje = $con->updateMensajeAlert($mensaje, $alerta);
-
-    $updateActivoData = $con->updateActivo($destino,$codigo,$nombreProducto,$cantidad,$fechaRegistro,$idproducto);
-
-
-
-
+    $con->updateMensajeAlert($mensaje, $alerta);
+    $con->updateActivo($destino, $codigo, $nombreProducto, $cantidad, $fechaRegistro, $idproducto);
 }
 
-
-
-
-$menuMain = $con->getMenuMain();
-header("Location: Inventario.php?usuario=$usuarioLogin&password=$passwordLogin&estado='Activo'");
+header("Location: Inventario.php?estado=Activo");
+exit;

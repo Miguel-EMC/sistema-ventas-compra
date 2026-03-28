@@ -1,82 +1,57 @@
 <?php
-require ('../Model/Conexion.php');
-require ('Constants.php');
 
+declare(strict_types=1);
 
+require('../Model/Conexion.php');
+require('Constants.php');
 
+$method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 
+if ($method === 'POST') {
+    validate_csrf_or_abort();
 
+    $login = trim((string) ($_POST['usuario'] ?? ''));
+    $plainPassword = (string) ($_POST['password'] ?? '');
 
-if(!isset($_SESSION)){
+    if ($login === '' || $plainPassword === '') {
+        flash('error', 'Debes ingresar usuario y password.');
+        redirect(app_url('/index.php'));
+    }
 
-    session_start();
+    $user = auth_service()->attempt($login, $plainPassword);
 
+    if ($user === null) {
+        flash('error', 'Usuario o password incorrectos, por favor intenta de nuevo.');
+        redirect(app_url('/index.php'));
+    }
 
+    login_user($user);
+    redirect(app_url('/Controller/AccessUsers.php'));
 }
 
-$usuario = $_GET['usuario'];
-$password = $_GET['password'];
+$currentUser = auth_user();
 
-$con = new conexion();
-
-
-$searchUser = $con->getUser($usuario , $password);
-
-foreach($searchUser as $user) {
-
-    $tipo = $user['tipo'];
-    $id_usuario = $user['id_usu'];
-    $nombres = $user['nombre'];
-    $password = $user['password'];
-    $foto = $user['foto'];
-
-
-
+if ($currentUser === null) {
+    flash('error', 'Necesitas iniciar sesion para continuar.');
+    redirect(app_url('/index.php'));
 }
 
-if(empty($searchUser)){
+$con = new Conexion();
+$usuario = $currentUser['login'];
+$password = legacy_sentinel_password();
+$tipo = $currentUser['tipo'];
+$id_usuario = $currentUser['id_usu'];
+$nombres = $currentUser['nombre'];
+$foto = $currentUser['foto'];
+$urlViews = URL_VIEWS;
+$imageUser = $foto;
+$userLogueado = $nombres;
+$menuMain = $tipo === 'VENTAS' ? $con->getMenuMainVentas() : $con->getMenuMain();
 
-    echo '
-        <script language = javascript>
-            alert("Usuario o Password incorrectos, por favor intenta de nuevo")
-            self.location = "../index.php"
-    </script>
-   ';
-
-
-
+if ($tipo === 'VENTAS') {
+    require('../Views/WellcomeVentas.php');
+    exit;
 }
 
-else if($tipo == 'VENTAS'){
-
-
-    require ('../Views/WellcomeVentas.php');
-
-
-
-}
-
-else if($tipo == 'ADMINISTRADOR'){
-
-
-    $urlViews = URL_VIEWS;
-
-    $imageUser = $foto;
-    
-    $userLogueado=$nombres;
-
-
-    $menuMain=$con->getMenuMain();
-    require ('../Views/Wellcome.php');
-
-
-
-}
-
-
-
-
-
-
-
+require('../Views/Wellcome.php');
 

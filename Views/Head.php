@@ -5,7 +5,7 @@
     <meta name="description" content="Sistema para el Menejo de Empresas - contabilidad , ventas , ingresos , egresos">
     <meta name="author" content="GeeksLabs">
     <meta name="keyword" content="Sistema modo tactil , para escritorio tabletas ">
-    <link rel="shortcut icon" href="img/favicon.png">
+    <link rel="shortcut icon" href="<?php echo $urlViews; ?>img/favicon.png">
 
     <title>iCONT - Sistema Profesional Para Empresas</title>
 

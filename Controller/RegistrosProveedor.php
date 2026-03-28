@@ -6,12 +6,15 @@ if (!isset($_SESSION)) {
     session_start();
 }
 
+$usuarioLogin = $_POST['usuarioLogin'] ?? $_GET['usuarioLogin'] ?? ($_SESSION['auth']['login'] ?? '');
+$passwordLogin = $_POST['passwordLogin'] ?? $_GET['passwordLogin'] ?? legacy_sentinel_password();
+
 $con = new conexion();
 
 if (isset($_POST['new_proveedor'])) {
 
-    $usuarioLogin = $_POST['usuarioLogin'];
-    $passwordLogin = $_POST['passwordLogin'];
+    $usuarioLogin = $_POST['usuarioLogin'] ?? $usuarioLogin;
+    $passwordLogin = $_POST['passwordLogin'] ?? $passwordLogin;
     $proveedor = $_POST['proveedor'];
     $responsable = $_POST['responsable'];
     $fechaRegistro = $_POST['fechaRegistro'];
@@ -31,8 +34,8 @@ if (isset($_POST['new_proveedor'])) {
 
 if (isset($_GET['idborrar'])) {
 
-    $usuarioLogin = $_GET['usuarioLogin'];
-    $passwordLogin = $_GET['passwordLogin'];
+    $usuarioLogin = $_GET['usuarioLogin'] ?? $usuarioLogin;
+    $passwordLogin = $_GET['passwordLogin'] ?? $passwordLogin;
     $idProveedor = $_GET['idborrar'];
 
     $mensaje = "Se elimino  los datos de la Proveedor correctamente !!!";
@@ -49,8 +52,8 @@ if (isset($_GET['idborrar'])) {
 
 if (isset($_POST['update_proveedor'])) {
     $idProveedor = $_POST['idproveedor'];
-    $usuarioLogin = $_POST['usuarioLogin'];
-    $passwordLogin = $_POST['passwordLogin'];
+    $usuarioLogin = $_POST['usuarioLogin'] ?? $usuarioLogin;
+    $passwordLogin = $_POST['passwordLogin'] ?? $passwordLogin;
     $proveedor = $_POST['proveedor'];
     $responsable = $_POST['responsable'];
     $fechaRegistro = $_POST['fechaRegistro'];
@@ -83,6 +86,6 @@ foreach ($searchUser as $user) {
 
 
 
-header("Location: proveedor.php?usuario=$usuarioLogin&password=$passwordLogin&estado='Activo'");
+header("Location: Proveedor.php?estado=Activo");
 
 ?>

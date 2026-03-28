@@ -60,6 +60,6 @@ if ($cantidadUpdated == 1) {
     }
 }
 
-header("Location: Ventas.php?usuario=$usuario&password=$password");
+header("Location: Ventas.php?estado=Activo");
 
 ?>

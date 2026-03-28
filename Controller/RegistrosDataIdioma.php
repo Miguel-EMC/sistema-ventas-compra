@@ -6,8 +6,8 @@ if (!isset($_SESSION)) {
     session_start();
 }
 
-$usuarioLogin = $_POST['usuarioLogin'];
-$passwordLogin = $_POST['passwordLogin'];
+$usuarioLogin = $_POST['usuarioLogin'] ?? $_GET['usuarioLogin'] ?? ($_SESSION['auth']['login'] ?? '');
+$passwordLogin = $_POST['passwordLogin'] ?? $_GET['passwordLogin'] ?? legacy_sentinel_password();
 
 $con = new conexion();
 
@@ -16,8 +16,8 @@ $menuMain = $con->getMenuMain();
 
 if (isset($_POST['update_data_idioma'])) {
 
-    $usuarioLogin = $_POST['usuarioLogin'];
-    $passwordLogin = $_POST['passwordLogin'];
+    $usuarioLogin = $_POST['usuarioLogin'] ?? $usuarioLogin;
+    $passwordLogin = $_POST['passwordLogin'] ?? $passwordLogin;
     $idIdiomaSytem = $_POST['idIdioma'];
     $idioma = $_POST['idioma'];
 
@@ -104,4 +104,4 @@ if (isset($_POST['update_data_idioma'])) {
 
 }
 
-header("Location: Languaje.php?usuario=$usuarioLogin&password=$passwordLogin&estado='Activo'");
+header("Location: Languaje.php?estado=Activo");

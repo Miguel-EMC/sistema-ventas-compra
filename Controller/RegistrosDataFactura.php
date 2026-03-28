@@ -7,8 +7,8 @@ if (!isset($_SESSION)) {
     session_start();
 }
 
-$usuarioLogin = $_POST['usuarioLogin'];
-$passwordLogin = $_POST['passwordLogin'];
+$usuarioLogin = $_POST['usuarioLogin'] ?? $_GET['usuarioLogin'] ?? ($_SESSION['auth']['login'] ?? '');
+$passwordLogin = $_POST['passwordLogin'] ?? $_GET['passwordLogin'] ?? legacy_sentinel_password();
 
 
 $con = new conexion();
@@ -20,8 +20,8 @@ if (isset($_POST['update_data_factura'])) {
 
     $iddatos = $_POST['iddatos'];
 
-    $usuarioLogin = $_POST['usuarioLogin'];
-    $passwordLogin = $_POST['passwordLogin'];
+    $usuarioLogin = $_POST['usuarioLogin'] ?? $usuarioLogin;
+    $passwordLogin = $_POST['passwordLogin'] ?? $passwordLogin;
     $iddatos = $_POST['iddatos'];
     $propietario = $_POST['propietario'];
     $razon = $_POST['razon'];
@@ -41,7 +41,7 @@ if (isset($_POST['update_data_factura'])) {
 }
 
 
-    header("Location: DatosFactura.php?usuario=$usuarioLogin&password=$passwordLogin&estado='Activo'");
+    header("Location: DatosFactura.php?estado=Activo");
 
 
 

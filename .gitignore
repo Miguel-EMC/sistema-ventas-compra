@@ -1,0 +1,12 @@
+/vendor/
+/.idea/
+/.vscode/
+/.phpunit.result.cache
+/.php-cs-fixer.cache
+/storage/logs/*
+/storage/uploads/*
+!/storage/uploads/.gitkeep
+!/storage/uploads/fotoproducto/
+/public/assets/
+/.env
+

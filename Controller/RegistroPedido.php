@@ -6,8 +6,8 @@ if (!isset($_SESSION)) {
     session_start();
 }
 
-$usuarioLogin = $_POST['usuarioLogin'];
-$passwordLogin = $_POST['passwordLogin'];
+$usuarioLogin = $_POST['usuarioLogin'] ?? $_GET['usuarioLogin'] ?? ($_SESSION['auth']['login'] ?? '');
+$passwordLogin = $_POST['passwordLogin'] ?? $_GET['passwordLogin'] ?? legacy_sentinel_password();
 
 $con = new conexion();
 
@@ -31,8 +31,8 @@ if (isset($_POST['nuevo_Pedido'])) {
 if (isset($_GET['idborrar'])) {
 
     $idPedido = $_GET['idborrar'];
-    $usuarioLogin = $_GET['usuarioLogin'];
-    $passwordLogin = $_GET['passwordLogin'];
+    $usuarioLogin = $_GET['usuarioLogin'] ?? $usuarioLogin;
+    $passwordLogin = $_GET['passwordLogin'] ?? $passwordLogin;
 
 
     $deletePedido = $con->deletePedido($idPedido);
@@ -76,7 +76,7 @@ foreach ($searchUser as $user) {
 
 $menuMain = $con->getMenuMain();
 
-header("Location: Pedido.php?usuario=$usuarioLogin&password=$passwordLogin&estado='Activo'");
+header("Location: Pedido.php?estado=Activo");
 
 
 ?>

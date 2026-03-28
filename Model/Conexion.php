@@ -11,19 +11,38 @@ class Conexion
 
     public function __construct()
     {
-        $user = 'root';
-        $password = '';
-        $server = 'localhost';
-        $database = 'icontpos';
+        $user = function_exists('config') ? (string) config('database.connections.mysql.username', 'root') : 'root';
+        $password = function_exists('config') ? (string) config('database.connections.mysql.password', '') : '';
+        $server = function_exists('config') ? (string) config('database.connections.mysql.host', 'localhost') : 'localhost';
+        $database = function_exists('config') ? (string) config('database.connections.mysql.database', 'icontpos') : 'icontpos';
         $this->con = new mysqli($server, $user, $password, $database);
     }
 
     public function getUser($usuario, $password)
     {
+        if (function_exists('auth_user') && (($password ?? '') === legacy_sentinel_password() || ($password ?? '') === '')) {
+            $currentUser = auth_user();
+            if ($currentUser !== null && ($usuario === '' || $usuario === $currentUser['login'])) {
+                return [$currentUser];
+            }
+        }
 
+        if (function_exists('auth_service')) {
+            $user = auth_service()->attempt((string) $usuario, (string) $password);
+            if ($user !== null) {
+                return [$user];
+            }
+        }
+
+        $usuario = $this->escape((string) $usuario);
+        $password = $this->escape((string) $password);
         $query = $this->con->query("SELECT * FROM usuarios WHERE login='" . $usuario . "' AND password='" . $password . "'");
 
         $retorno = [];
+
+        if ($query === false) {
+            return $retorno;
+        }
 
         $i = 0;
         while ($fila = $query->fetch_assoc()) {
@@ -106,7 +125,19 @@ class Conexion
 
     public function getRegisterNewUser($nombre, $tipo, $usuario, $password, $imagenUsuario)
     {
+        $nombre = $this->escape($nombre);
+        $tipo = $this->escape($tipo);
+        $usuario = $this->escape($usuario);
+        $imagenUsuario = $this->escape($imagenUsuario);
 
+        if ($this->usuariosPasswordHashColumnExists()) {
+            $passwordHash = $this->escape(password_hash($password, PASSWORD_DEFAULT));
+            $query = $this->con->query("INSERT INTO `usuarios` (`id_usu`, `login`, `tipo`, `nombre`, `password`, `password_hash`, `foto`)
+                                            VALUES (NULL, '$usuario', '$tipo', '$nombre', '', '$passwordHash', '$imagenUsuario')");
+            return $query;
+        }
+
+        $password = $this->escape($password);
         $query = $this->con->query("INSERT INTO `usuarios` (`id_usu`, `login`, `tipo`, `nombre`, `password`, `foto`)
                                             VALUES (NULL, '$usuario', '$tipo', '$nombre', '$password', '$imagenUsuario')");
         return $query;
@@ -122,7 +153,25 @@ class Conexion
 
     public function updateUsuario($login, $tipo, $nombre, $password, $foto, $idUsuario)
     {
+        $login = $this->escape($login);
+        $tipo = $this->escape($tipo);
+        $nombre = $this->escape($nombre);
+        $foto = $this->escape($foto);
+        $idUsuario = (int) $idUsuario;
 
+        if ($this->usuariosPasswordHashColumnExists()) {
+            $passwordHash = $this->escape(password_hash($password, PASSWORD_DEFAULT));
+            $query = $this->con->query("UPDATE `usuarios`
+                                          SET `login` = '$login',
+                                               `tipo` = '$tipo',
+                                                `nombre` = '$nombre',
+                                                 `password` = '',
+                                                 `password_hash` = '$passwordHash',
+                                                 `foto` = '$foto' WHERE `usuarios`.`id_usu` = $idUsuario");
+            return $query;
+        }
+
+        $password = $this->escape($password);
         $query = $this->con->query("UPDATE `usuarios`
                                           SET `login` = '$login',
                                                `tipo` = '$tipo',
@@ -131,6 +180,22 @@ class Conexion
                                                  `foto` = '$foto' WHERE `usuarios`.`id_usu` = $idUsuario");
 
         return $query;
+    }
+
+    private function escape($value)
+    {
+        return $this->con->real_escape_string((string) $value);
+    }
+
+    private function usuariosPasswordHashColumnExists()
+    {
+        $query = $this->con->query("SHOW COLUMNS FROM `usuarios` LIKE 'password_hash'");
+
+        if ($query === false) {
+            return false;
+        }
+
+        return $query->numRows() > 0;
     }
 
     public function getMensajeAlerta()

@@ -1,0 +1,6 @@
+Options -Indexes
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^([^/]+)$ dispatch.php?file=$1 [L,QSA]
+
