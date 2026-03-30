@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { resolveApiError } from '../../core/http/resolve-api-error';
 import { DOCUMENT_TYPE_OPTIONS, BusinessPartner, BusinessPartnerPayload } from '../partners/partners.types';
@@ -21,6 +22,13 @@ import { CustomersApiService } from './customers.api';
         </div>
         <span class="pill">Migracion real del dominio Customers</span>
       </header>
+
+      @if (legacyNotice()) {
+        <article class="surface surface--muted stack">
+          <span class="page-kicker">Migracion</span>
+          <strong>{{ legacyNotice() }}</strong>
+        </article>
+      }
 
       <section class="grid grid--cards">
         <article class="surface metric-card">
@@ -221,6 +229,8 @@ export class CustomersPageComponent {
   private readonly auth = inject(AuthService);
   private readonly api = inject(CustomersApiService);
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
+  private legacyPrefillApplied = false;
 
   protected readonly isAdmin = this.auth.isAdmin;
   protected readonly documentTypes = DOCUMENT_TYPE_OPTIONS;
@@ -229,6 +239,7 @@ export class CustomersPageComponent {
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly editingId = signal<number | null>(null);
+  protected readonly legacyNotice = signal<string | null>(null);
 
   protected readonly activeCustomersCount = computed(
     () => this.customers().filter((customer) => customer.is_active).length,
@@ -254,6 +265,8 @@ export class CustomersPageComponent {
   });
 
   public constructor() {
+    this.legacyNotice.set(this.resolveLegacyNotice(this.route.snapshot.queryParamMap.get('legacy')));
+    this.applyLegacyPrefillFromQuery();
     void this.loadCustomers();
   }
 
@@ -371,5 +384,47 @@ export class CustomersPageComponent {
     const normalized = value?.trim() ?? '';
 
     return normalized === '' ? null : normalized;
+  }
+
+  private applyLegacyPrefillFromQuery(): void {
+    if (this.legacyPrefillApplied || !this.isAdmin()) {
+      this.legacyPrefillApplied = true;
+      return;
+    }
+
+    this.legacyPrefillApplied = true;
+
+    const query = this.route.snapshot.queryParamMap;
+    const name = this.nullableText(query.get('name'));
+    const documentNumber = this.nullableText(query.get('document_number'));
+    const email = this.nullableText(query.get('email'));
+    const phone = this.nullableText(query.get('phone'));
+    const address = this.nullableText(query.get('address'));
+
+    if (name === null && documentNumber === null && email === null && phone === null && address === null) {
+      return;
+    }
+
+    this.resetForm();
+    this.form.patchValue({
+      name: name ?? '',
+      document_number: documentNumber ?? '',
+      email: email ?? '',
+      phone: phone ?? '',
+      address: address ?? '',
+    });
+  }
+
+  private resolveLegacyNotice(value: string | null): string | null {
+    switch ((value ?? '').trim()) {
+      case 'customer-lookup-retired':
+        return 'La busqueda AJAX legacy de clientes fue retirada. Usa este modulo como base de consulta y mantenimiento.';
+      case 'customer-form-write':
+        return 'El formulario legacy de clientes ya no escribe en la base anterior. Revisa los datos precargados y guarda desde aqui.';
+      case 'customer-form-delete':
+        return 'La eliminacion legacy de clientes fue retirada. Usa este modulo para depurar o corregir la base nueva.';
+      default:
+        return null;
+    }
   }
 }

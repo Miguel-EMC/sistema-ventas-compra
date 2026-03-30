@@ -2,9 +2,6 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/../bootstrap/app.php';
+const LEGACY_AUTH_BRIDGE_ENTRY = 'Logout.php';
 
-logout_user();
-flash('success', 'Sesion cerrada correctamente.');
-redirect(app_url('/index.php'));
-
+require __DIR__ . '/LegacyAuthBridge.php';

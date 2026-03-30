@@ -137,8 +137,8 @@ class CashSessionService
     {
         return CashSession::query()
             ->with(['register', 'openedBy', 'closedBy'])
-            ->withCount('sales')
-            ->withSum('sales as sales_total', 'grand_total')
+            ->withCount(['sales' => fn ($query) => $query->where('status', 'completed')])
+            ->withSum(['sales as sales_total' => fn ($query) => $query->where('status', 'completed')], 'grand_total')
             ->withSum(['movements as cash_income_total' => fn ($query) => $query->where('type', 'income')], 'amount')
             ->withSum(['movements as cash_out_total' => fn ($query) => $query->where('type', 'expense')], 'amount')
             ->orderByDesc('opened_at')
@@ -149,8 +149,8 @@ class CashSessionService
     private function loadSessionMetrics(CashSession $session): CashSession
     {
         return $session->load(['register', 'openedBy', 'closedBy'])
-            ->loadCount('sales')
-            ->loadSum('sales as sales_total', 'grand_total')
+            ->loadCount(['sales' => fn ($query) => $query->where('status', 'completed')])
+            ->loadSum(['sales as sales_total' => fn ($query) => $query->where('status', 'completed')], 'grand_total')
             ->loadSum(['movements as cash_income_total' => fn ($query) => $query->where('type', 'income')], 'amount')
             ->loadSum(['movements as cash_out_total' => fn ($query) => $query->where('type', 'expense')], 'amount');
     }

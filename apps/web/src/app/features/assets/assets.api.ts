@@ -10,17 +10,8 @@ export class AssetsApiService {
   private readonly http = inject(HttpClient);
 
   async listAssets(search = ''): Promise<Asset[]> {
-    const params = new URLSearchParams();
-
-    if (search.trim() !== '') {
-      params.set('search', search.trim());
-    }
-
-    const queryString = params.toString();
-    const url = queryString === '' ? `${API_BASE_URL}/assets` : `${API_BASE_URL}/assets?${queryString}`;
-
     const response = await firstValueFrom(
-      this.http.get<ApiCollectionResponse<Asset>>(url),
+      this.http.get<ApiCollectionResponse<Asset>>(this.buildSearchUrl(`${API_BASE_URL}/assets`, search)),
     );
 
     return response.data;
@@ -75,5 +66,33 @@ export class AssetsApiService {
 
   async deleteAsset(id: number): Promise<void> {
     await firstValueFrom(this.http.delete(`${API_BASE_URL}/assets/${id}`));
+  }
+
+  async downloadCatalogPdf(search = ''): Promise<Blob> {
+    return await firstValueFrom(
+      this.http.get(this.buildSearchUrl(`${API_BASE_URL}/reports/catalog/assets/pdf`, search), {
+        responseType: 'blob',
+      }),
+    );
+  }
+
+  async downloadCatalogCsv(search = ''): Promise<Blob> {
+    return await firstValueFrom(
+      this.http.get(this.buildSearchUrl(`${API_BASE_URL}/reports/catalog/assets/csv`, search), {
+        responseType: 'blob',
+      }),
+    );
+  }
+
+  private buildSearchUrl(baseUrl: string, search = ''): string {
+    const params = new URLSearchParams();
+
+    if (search.trim() !== '') {
+      params.set('search', search.trim());
+    }
+
+    const queryString = params.toString();
+
+    return queryString === '' ? baseUrl : `${baseUrl}?${queryString}`;
   }
 }

@@ -3,7 +3,16 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL } from '../../core/config/api.config';
 import { ApiCollectionResponse, ApiResourceResponse } from '../../core/http/api.types';
-import { PurchaseOrder, PurchaseOrderPayload, ReceivePurchaseOrderPayload } from './purchases.types';
+import {
+  CancelPurchaseOrderPayload,
+  CreatePurchaseOrderPaymentPayload,
+  CreatePurchaseReturnPayload,
+  PurchaseOrder,
+  PurchaseOrderPayment,
+  PurchaseOrderPayload,
+  PurchaseReturn,
+  ReceivePurchaseOrderPayload,
+} from './purchases.types';
 
 @Injectable({ providedIn: 'root' })
 export class PurchasesApiService {
@@ -53,6 +62,39 @@ export class PurchasesApiService {
     const response = await firstValueFrom(
       this.http.post<ApiResourceResponse<PurchaseOrder>>(
         `${API_BASE_URL}/purchase-orders/${id}/receive`,
+        payload,
+      ),
+    );
+
+    return response.data;
+  }
+
+  async cancel(id: number, payload: CancelPurchaseOrderPayload): Promise<PurchaseOrder> {
+    const response = await firstValueFrom(
+      this.http.post<ApiResourceResponse<PurchaseOrder>>(
+        `${API_BASE_URL}/purchase-orders/${id}/cancel`,
+        payload,
+      ),
+    );
+
+    return response.data;
+  }
+
+  async createReturn(id: number, payload: CreatePurchaseReturnPayload): Promise<PurchaseReturn> {
+    const response = await firstValueFrom(
+      this.http.post<ApiResourceResponse<PurchaseReturn>>(
+        `${API_BASE_URL}/purchase-orders/${id}/returns`,
+        payload,
+      ),
+    );
+
+    return response.data;
+  }
+
+  async createPayment(id: number, payload: CreatePurchaseOrderPaymentPayload): Promise<PurchaseOrderPayment> {
+    const response = await firstValueFrom(
+      this.http.post<ApiResourceResponse<PurchaseOrderPayment>>(
+        `${API_BASE_URL}/purchase-orders/${id}/payments`,
         payload,
       ),
     );

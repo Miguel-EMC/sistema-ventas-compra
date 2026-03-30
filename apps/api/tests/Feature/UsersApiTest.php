@@ -75,6 +75,38 @@ class UsersApiTest extends TestCase
         ]);
     }
 
+    public function test_last_active_admin_cannot_be_deactivated(): void
+    {
+        $this->seed(CoreReferenceSeeder::class);
+
+        /** @var User $admin */
+        $admin = User::query()->where('username', 'admin')->firstOrFail();
+        Sanctum::actingAs($admin);
+
+        $this->patchJson("/api/v1/users/{$admin->id}", [
+            'name' => $admin->name,
+            'username' => $admin->username,
+            'display_name' => $admin->display_name,
+            'email' => $admin->email,
+            'role_id' => $admin->role_id,
+            'is_active' => false,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['role_id']);
+    }
+
+    public function test_admin_cannot_delete_own_account(): void
+    {
+        $this->seed(CoreReferenceSeeder::class);
+
+        /** @var User $admin */
+        $admin = User::query()->where('username', 'admin')->firstOrFail();
+        Sanctum::actingAs($admin);
+
+        $this->deleteJson("/api/v1/users/{$admin->id}")
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'No puedes eliminar tu propio usuario.');
+    }
+
     public function test_cashier_cannot_manage_users(): void
     {
         $this->seed(CoreReferenceSeeder::class);

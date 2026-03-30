@@ -2,9 +2,15 @@
 
 namespace App\Application\Services\Purchases;
 
+use App\Application\Services\Cash\CashSessionService;
+use App\Models\CashMovement;
+use App\Models\CashSession;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
+use App\Models\PurchaseOrderPayment;
+use App\Models\PurchaseReturn;
+use App\Models\PurchaseReturnItem;
 use App\Models\StockMovement;
 use App\Models\Supplier;
 use App\Models\User;
@@ -16,6 +22,11 @@ use Illuminate\Validation\ValidationException;
 
 class PurchaseOrderManagementService
 {
+    public function __construct(
+        private readonly CashSessionService $cashSessionService,
+    ) {
+    }
+
     /**
      * @param array<string, mixed> $filters
      * @return Collection<int, PurchaseOrder>
@@ -27,7 +38,9 @@ class PurchaseOrderManagementService
 
         return PurchaseOrder::query()
             ->with($this->relations())
-            ->withCount('items')
+            ->withCount(['items', 'returns', 'payments'])
+            ->withSum('returns as returned_total', 'return_total')
+            ->withSum('payments as paid_total', 'amount')
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($innerQuery) use ($search): void {
                     $innerQuery
@@ -175,9 +188,281 @@ class PurchaseOrderManagementService
         $purchaseOrder->delete();
     }
 
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function cancel(PurchaseOrder $purchaseOrder, array $payload, User $user): PurchaseOrder
+    {
+        if ($purchaseOrder->status === 'cancelled') {
+            throw ValidationException::withMessages([
+                'purchase_order' => 'La orden ya fue anulada anteriormente.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($purchaseOrder, $payload, $user): PurchaseOrder {
+            $purchaseOrder = $this->loadRelations($purchaseOrder);
+            $this->guardPurchaseHasNoPayments($purchaseOrder);
+
+            if ($purchaseOrder->status === 'received') {
+                $this->guardStockForCancellation($purchaseOrder);
+
+                foreach ($purchaseOrder->items as $item) {
+                    $quantityToReverse = round((float) $item->quantity_received - (float) ($item->returned_quantity ?? 0), 2);
+
+                    if ($quantityToReverse <= 0) {
+                        continue;
+                    }
+
+                    $product = $item->product;
+
+                    if ($product instanceof Product && $product->track_stock) {
+                        StockMovement::query()->create([
+                            'product_id' => $product->id,
+                            'user_id' => $user->id,
+                            'type' => 'purchase_return',
+                            'reason' => 'purchase_cancellation',
+                            'reference_type' => 'purchase_order',
+                            'reference_id' => $purchaseOrder->id,
+                            'quantity' => -1 * $quantityToReverse,
+                            'unit_cost' => $item->unit_cost,
+                            'notes' => "Salida por anulacion compra {$purchaseOrder->public_id}",
+                            'occurred_at' => now(),
+                        ]);
+                    }
+                }
+            }
+
+            $purchaseOrder->update([
+                'status' => 'cancelled',
+                'cancelled_by_id' => $user->id,
+                'cancellation_reason' => $this->nullableText($payload['cancellation_reason'] ?? null),
+                'cancelled_at' => now(),
+            ]);
+
+            return $this->loadRelations($purchaseOrder);
+        });
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function registerPayment(PurchaseOrder $purchaseOrder, array $payload, User $user): PurchaseOrderPayment
+    {
+        if ($purchaseOrder->status !== 'received') {
+            throw ValidationException::withMessages([
+                'purchase_order' => 'Solo puedes registrar pagos sobre compras recibidas.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($purchaseOrder, $payload, $user): PurchaseOrderPayment {
+            $purchaseOrder = $this->loadRelations($purchaseOrder);
+            $summary = $this->paymentSummary($purchaseOrder);
+
+            if ($summary['balance_due'] <= 0) {
+                throw ValidationException::withMessages([
+                    'purchase_order' => 'La compra ya no tiene saldo pendiente por pagar.',
+                ]);
+            }
+
+            $amount = round((float) ($payload['amount'] ?? 0), 2);
+
+            if ($amount > $summary['balance_due']) {
+                throw ValidationException::withMessages([
+                    'amount' => "Solo puedes registrar hasta {$summary['balance_due']} en esta compra.",
+                ]);
+            }
+
+            $method = trim((string) ($payload['method'] ?? ''));
+            $paidAt = $this->parseDateTime($payload['paid_at'] ?? null) ?? now();
+            $cashSession = $method === 'cash'
+                ? $this->cashSessionService->getCurrentSession($user)
+                : null;
+
+            if ($method === 'cash' && ! $cashSession instanceof CashSession) {
+                throw ValidationException::withMessages([
+                    'cash_session' => 'Debes abrir una caja para registrar pagos en efectivo.',
+                ]);
+            }
+
+            $payment = PurchaseOrderPayment::query()->create([
+                'public_id' => (string) Str::uuid(),
+                'purchase_order_id' => $purchaseOrder->id,
+                'cash_session_id' => $cashSession?->id,
+                'user_id' => $user->id,
+                'method' => $method,
+                'amount' => $amount,
+                'reference' => $this->nullableText($payload['reference'] ?? null),
+                'notes' => $this->nullableText($payload['notes'] ?? null),
+                'paid_at' => $paidAt,
+                'metadata' => [
+                    'balance_due_before' => $summary['balance_due'],
+                    'balance_due_after' => round($summary['balance_due'] - $amount, 2),
+                ],
+            ]);
+
+            if ($cashSession instanceof CashSession) {
+                CashMovement::query()->create([
+                    'public_id' => (string) Str::uuid(),
+                    'cash_session_id' => $cashSession->id,
+                    'user_id' => $user->id,
+                    'type' => 'expense',
+                    'category' => 'purchase_payment',
+                    'amount' => $amount,
+                    'reference_type' => 'purchase_order_payment',
+                    'reference_id' => $payment->id,
+                    'notes' => "Pago compra {$purchaseOrder->public_id}",
+                    'occurred_at' => $paidAt,
+                ]);
+            }
+
+            return $this->loadPaymentRelations($payment);
+        });
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function registerReturn(PurchaseOrder $purchaseOrder, array $payload, User $user): PurchaseReturn
+    {
+        if ($purchaseOrder->status !== 'received') {
+            throw ValidationException::withMessages([
+                'purchase_order' => 'Solo puedes devolver compras que ya fueron recibidas.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($purchaseOrder, $payload, $user): PurchaseReturn {
+            $purchaseOrder = $this->loadRelations($purchaseOrder);
+
+            if ($purchaseOrder->items->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'purchase_order' => 'La orden no tiene items para devolver.',
+                ]);
+            }
+
+            $returnedQuantities = PurchaseReturnItem::query()
+                ->selectRaw('purchase_order_item_id, COALESCE(SUM(quantity), 0) as aggregate_quantity')
+                ->whereIn('purchase_order_item_id', $purchaseOrder->items->pluck('id')->all())
+                ->groupBy('purchase_order_item_id')
+                ->pluck('aggregate_quantity', 'purchase_order_item_id');
+
+            $orderItems = $purchaseOrder->items->keyBy('id');
+            $preparedItems = [];
+            $subtotal = 0.0;
+            $returnedAt = $this->parseDateTime($payload['returned_at'] ?? null) ?? now();
+
+            foreach (($payload['items'] ?? []) as $index => $itemPayload) {
+                /** @var PurchaseOrderItem|null $orderItem */
+                $orderItem = $orderItems->get((int) ($itemPayload['purchase_order_item_id'] ?? 0));
+
+                if (! $orderItem instanceof PurchaseOrderItem) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.purchase_order_item_id" => 'El item seleccionado no pertenece a la orden.',
+                    ]);
+                }
+
+                $requestedQuantity = round((float) ($itemPayload['quantity'] ?? 0), 2);
+                $alreadyReturned = round((float) ($returnedQuantities[$orderItem->id] ?? 0), 2);
+                $remainingQuantity = round((float) $orderItem->quantity_received - $alreadyReturned, 2);
+
+                if ($requestedQuantity > $remainingQuantity) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.quantity" => "Solo puedes devolver hasta {$remainingQuantity} unidad(es) de '{$orderItem->name_snapshot}'.",
+                    ]);
+                }
+
+                $product = $orderItem->product;
+
+                if (
+                    $product instanceof Product
+                    && $product->track_stock
+                    && (float) ($product->current_stock ?? 0) < $requestedQuantity
+                ) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.quantity" => "No hay stock suficiente para devolver '{$orderItem->name_snapshot}'.",
+                    ]);
+                }
+
+                $lineTotal = round($requestedQuantity * (float) $orderItem->unit_cost, 2);
+                $subtotal += $lineTotal;
+
+                $preparedItems[] = [
+                    'purchase_order_item' => $orderItem,
+                    'product' => $product,
+                    'quantity' => $requestedQuantity,
+                    'line_total' => $lineTotal,
+                    'reason' => $this->nullableText($itemPayload['reason'] ?? null),
+                ];
+            }
+
+            if ($preparedItems === []) {
+                throw ValidationException::withMessages([
+                    'items' => 'Debes registrar al menos un item para devolver.',
+                ]);
+            }
+
+            $subtotal = round($subtotal, 2);
+
+            $purchaseReturn = PurchaseReturn::query()->create([
+                'public_id' => (string) Str::uuid(),
+                'purchase_order_id' => $purchaseOrder->id,
+                'user_id' => $user->id,
+                'status' => 'completed',
+                'subtotal' => $subtotal,
+                'tax_total' => 0,
+                'return_total' => $subtotal,
+                'reason' => $payload['reason'],
+                'notes' => $this->nullableText($payload['notes'] ?? null),
+                'returned_at' => $returnedAt,
+                'metadata' => [
+                    'supplier_id' => $purchaseOrder->supplier_id,
+                    'purchase_order_status' => $purchaseOrder->status,
+                ],
+            ]);
+
+            foreach ($preparedItems as $preparedItem) {
+                /** @var PurchaseOrderItem $orderItem */
+                $orderItem = $preparedItem['purchase_order_item'];
+                /** @var Product|null $product */
+                $product = $preparedItem['product'];
+
+                PurchaseReturnItem::query()->create([
+                    'purchase_return_id' => $purchaseReturn->id,
+                    'purchase_order_item_id' => $orderItem->id,
+                    'product_id' => $orderItem->product_id,
+                    'name_snapshot' => $orderItem->name_snapshot,
+                    'sku_snapshot' => $orderItem->sku_snapshot,
+                    'quantity' => $preparedItem['quantity'],
+                    'unit_cost' => $orderItem->unit_cost,
+                    'line_total' => $preparedItem['line_total'],
+                    'reason' => $preparedItem['reason'],
+                ]);
+
+                if ($product instanceof Product && $product->track_stock) {
+                    StockMovement::query()->create([
+                        'product_id' => $product->id,
+                        'user_id' => $user->id,
+                        'type' => 'purchase_return',
+                        'reason' => 'purchase_partial_return',
+                        'reference_type' => 'purchase_return',
+                        'reference_id' => $purchaseReturn->id,
+                        'quantity' => -1 * (float) $preparedItem['quantity'],
+                        'unit_cost' => $orderItem->unit_cost,
+                        'notes' => "Salida por devolucion compra {$purchaseOrder->public_id}",
+                        'occurred_at' => $returnedAt,
+                    ]);
+                }
+            }
+
+            return $this->loadReturnRelations($purchaseReturn);
+        });
+    }
+
     public function loadRelations(PurchaseOrder $purchaseOrder): PurchaseOrder
     {
-        return $purchaseOrder->load($this->relations())->loadCount('items');
+        return $purchaseOrder->load($this->relations())
+            ->loadCount(['items', 'returns', 'payments'])
+            ->loadSum('returns as returned_total', 'return_total')
+            ->loadSum('payments as paid_total', 'amount');
     }
 
     /**
@@ -189,7 +474,12 @@ class PurchaseOrderManagementService
             'supplier',
             'createdBy.role',
             'receivedBy.role',
-            'items.product' => fn ($query) => $query->with('category')->withSum('stockMovements as current_stock', 'quantity'),
+            'cancelledBy.role',
+            'items' => fn ($query) => $query
+                ->with(['product' => fn ($productQuery) => $productQuery->with('category')->withSum('stockMovements as current_stock', 'quantity')])
+                ->withSum('returnItems as returned_quantity', 'quantity'),
+            'payments' => fn ($query) => $query->with(['user', 'cashSession.register']),
+            'returns' => fn ($query) => $query->with(['user', 'items']),
         ];
     }
 
@@ -213,6 +503,42 @@ class PurchaseOrderManagementService
         }
 
         return $supplier;
+    }
+
+    private function guardStockForCancellation(PurchaseOrder $purchaseOrder): void
+    {
+        foreach ($purchaseOrder->items as $item) {
+            $quantityToReverse = round((float) $item->quantity_received - (float) ($item->returned_quantity ?? 0), 2);
+
+            if ($quantityToReverse <= 0) {
+                continue;
+            }
+
+            $product = $item->product;
+
+            if (
+                $product instanceof Product
+                && $product->track_stock
+                && (float) ($product->current_stock ?? 0) < $quantityToReverse
+            ) {
+                throw ValidationException::withMessages([
+                    'purchase_order' => "No hay stock suficiente para revertir '{$item->name_snapshot}'.",
+                ]);
+            }
+        }
+    }
+
+    private function guardPurchaseHasNoPayments(PurchaseOrder $purchaseOrder): void
+    {
+        $paidTotal = round((float) ($purchaseOrder->paid_total ?? $purchaseOrder->payments?->sum('amount') ?? 0), 2);
+
+        if ($paidTotal <= 0) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'purchase_order' => 'No puedes anular una compra con pagos registrados.',
+        ]);
     }
 
     /**
@@ -279,6 +605,39 @@ class PurchaseOrderManagementService
                 ...$item,
             ]);
         }
+    }
+
+    private function loadReturnRelations(PurchaseReturn $purchaseReturn): PurchaseReturn
+    {
+        return $purchaseReturn->load([
+            'user',
+            'items',
+        ]);
+    }
+
+    private function loadPaymentRelations(PurchaseOrderPayment $payment): PurchaseOrderPayment
+    {
+        return $payment->load([
+            'user',
+            'cashSession.register',
+        ]);
+    }
+
+    /**
+     * @return array{paid_total: float, returned_total: float, net_payable_total: float, balance_due: float}
+     */
+    private function paymentSummary(PurchaseOrder $purchaseOrder): array
+    {
+        $returnedTotal = round((float) ($purchaseOrder->returned_total ?? $purchaseOrder->returns?->sum('return_total') ?? 0), 2);
+        $paidTotal = round((float) ($purchaseOrder->paid_total ?? $purchaseOrder->payments?->sum('amount') ?? 0), 2);
+        $netPayableTotal = round(max(0, (float) $purchaseOrder->grand_total - $returnedTotal), 2);
+
+        return [
+            'paid_total' => $paidTotal,
+            'returned_total' => $returnedTotal,
+            'net_payable_total' => $netPayableTotal,
+            'balance_due' => round($netPayableTotal - $paidTotal, 2),
+        ];
     }
 
     private function nullableText(mixed $value): ?string

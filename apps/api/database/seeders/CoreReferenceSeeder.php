@@ -43,6 +43,105 @@ class CoreReferenceSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'name' => 'Peso argentino',
+                'code' => 'ARS',
+                'symbol' => '$',
+                'decimals' => 2,
+                'is_default' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Boliviano',
+                'code' => 'BOB',
+                'symbol' => 'Bs.',
+                'decimals' => 2,
+                'is_default' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Real brasileño',
+                'code' => 'BRL',
+                'symbol' => 'R$',
+                'decimals' => 2,
+                'is_default' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Peso chileno',
+                'code' => 'CLP',
+                'symbol' => '$',
+                'decimals' => 0,
+                'is_default' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Peso colombiano',
+                'code' => 'COP',
+                'symbol' => '$',
+                'decimals' => 2,
+                'is_default' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Euro',
+                'code' => 'EUR',
+                'symbol' => '€',
+                'decimals' => 2,
+                'is_default' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Peso mexicano',
+                'code' => 'MXN',
+                'symbol' => '$',
+                'decimals' => 2,
+                'is_default' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Guarani paraguayo',
+                'code' => 'PYG',
+                'symbol' => '₲',
+                'decimals' => 0,
+                'is_default' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Sol peruano',
+                'code' => 'PEN',
+                'symbol' => 'S/',
+                'decimals' => 2,
+                'is_default' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Peso uruguayo',
+                'code' => 'UYU',
+                'symbol' => '$',
+                'decimals' => 2,
+                'is_default' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Bolivar venezolano',
+                'code' => 'VES',
+                'symbol' => 'Bs.',
+                'decimals' => 2,
+                'is_default' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
 
         DB::table('locales')->insertOrIgnore([
@@ -50,6 +149,20 @@ class CoreReferenceSeeder extends Seeder
                 'name' => 'Español',
                 'code' => 'es-EC',
                 'is_default' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'English',
+                'code' => 'en-US',
+                'is_default' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Português',
+                'code' => 'pt-BR',
+                'is_default' => false,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -68,7 +181,10 @@ class CoreReferenceSeeder extends Seeder
                 'region' => 'Guayas',
                 'country_code' => 'EC',
                 'is_primary' => true,
-                'metadata' => null,
+                'metadata' => json_encode([
+                    'billing_owner_name' => 'Administrador base',
+                    'billing_address_reference' => 'Matriz',
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -97,6 +213,33 @@ class CoreReferenceSeeder extends Seeder
                 ],
             );
         }
+
+        DB::table('tax_resolutions')->where('authorization_number', '!=', 'AUTH-DEMO-001')->update([
+            'is_active' => false,
+            'updated_at' => now(),
+        ]);
+
+        $companyProfileId = DB::table('company_profiles')->where('is_primary', true)->value('id');
+
+        DB::table('tax_resolutions')->updateOrInsert(
+            ['authorization_number' => 'AUTH-DEMO-001'],
+            [
+                'company_profile_id' => $companyProfileId,
+                'name' => 'Dosificacion demo principal',
+                'series' => '001-001',
+                'invoice_number_start' => 1,
+                'invoice_number_end' => 99999999,
+                'next_invoice_number' => 1,
+                'starts_at' => now()->startOfYear(),
+                'ends_at' => now()->addYear()->endOfYear(),
+                'technical_key' => 'DEMO-KEY-VENTASPOS',
+                'legend' => 'Documento emitido en la plataforma nueva.',
+                'is_active' => true,
+                'metadata' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
 
         $adminRoleId = DB::table('roles')->where('slug', 'admin')->value('id');
 

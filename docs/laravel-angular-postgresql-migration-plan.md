@@ -7,7 +7,7 @@ Migrar `ventaspos` desde su arquitectura PHP legacy a una plataforma moderna, ma
 - Frontend SPA: Angular 21
 - Base de datos: PostgreSQL 18
 - Autenticacion web/API: Laravel Sanctum
-- UI: Angular con Tailwind CSS, Angular CDK y un design system propio
+- UI: Angular con Angular Material, Angular CDK y un design system propio
 
 La migracion debe preservar la operacion del negocio, corregir inconsistencias de logica y evitar una reescritura de golpe.
 
@@ -23,7 +23,7 @@ Este plan toma como referencia el estado oficial al 28 de marzo de 2026:
 ## Problemas del sistema actual
 El sistema legacy mezcla vistas, controladores, acceso a datos y reglas de negocio en el mismo flujo. Los principales problemas detectados son:
 
-- La mayor parte de la logica esta centralizada en `Model/Conexion.php`.
+- Historicamente, la mayor parte de la logica estaba centralizada en `Model/Conexion.php`.
 - Los controladores ejecutan reglas de negocio directamente y dependen de `$_GET`, `$_POST` y sesiones sin una capa de aplicacion clara.
 - La estructura actual no separa bien:
   - catalogo comercial
@@ -151,8 +151,8 @@ src/app/
 - Signals para estado local
 - RxJS solo donde aporte valor real
 - Angular Router con lazy loading por modulo
+- Angular Material como base actual del sistema
 - Angular CDK para overlays, menus y accesibilidad
-- Tailwind CSS para tokens utilitarios
 - Design system propio para:
   - shell
   - tablas

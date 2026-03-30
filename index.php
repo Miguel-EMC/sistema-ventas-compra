@@ -2,10 +2,6 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/bootstrap/app.php';
+const LEGACY_AUTH_BRIDGE_ENTRY = 'index.php';
 
-if (auth_user() !== null) {
-    redirect(app_url('/Controller/AccessUsers.php'));
-}
-
-require __DIR__ . '/Controller/LoginController.php';
+require __DIR__ . '/Controller/LegacyAuthBridge.php';

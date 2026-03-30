@@ -1,25 +1,7 @@
 <?php
-require('../Model/Conexion.php');
-require('Constants.php');
 
-if (!isset($_SESSION)) {
-    session_start();
-}
+declare(strict_types=1);
 
-$idUsuario = $_GET['idUser'];
+const LEGACY_SALES_BRIDGE_ENTRY = 'DeleteAllPreVenta.php';
 
-$con = new conexion();
-
-$onlyUserSession = $con->getOnlyUserData($idUsuario);
-
-foreach ($onlyUserSession as $user) {
-    $usuario = $user['login'];
-    $password = $user['password'];
-}
-
-$deleteAllPreventa = $con->deleteAllPreventa();
-
-$urlViews = URL_VIEWS;
-
-require('../Views/RefreshPedido.php');
-?>
+require __DIR__ . '/LegacySalesBridge.php';

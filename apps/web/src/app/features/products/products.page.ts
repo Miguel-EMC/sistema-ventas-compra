@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { resolveApiError } from '../../core/http/resolve-api-error';
 import { ProductsApiService } from './products.api';
@@ -27,6 +28,13 @@ import {
         </div>
         <span class="pill">Migracion real del dominio Catalog</span>
       </header>
+
+      @if (legacyNotice()) {
+        <article class="surface surface--muted stack">
+          <span class="page-kicker">Migracion</span>
+          <strong>{{ legacyNotice() }}</strong>
+        </article>
+      }
 
       <section class="grid grid--cards">
         <article class="surface metric-card">
@@ -69,6 +77,22 @@ import {
             </div>
 
             <div class="cta-row">
+              <button
+                class="btn btn--ghost"
+                type="button"
+                (click)="downloadCatalogPdf()"
+                [disabled]="downloadingPdf()"
+              >
+                {{ downloadingPdf() ? 'Descargando PDF...' : 'PDF catalogo' }}
+              </button>
+              <button
+                class="btn btn--ghost"
+                type="button"
+                (click)="downloadCatalogCsv()"
+                [disabled]="downloadingCsv()"
+              >
+                {{ downloadingCsv() ? 'Descargando CSV...' : 'CSV catalogo' }}
+              </button>
               <button class="btn" type="button" (click)="loadProducts()">Refrescar</button>
               @if (isAdmin()) {
                 <button class="btn btn--ghost" type="button" (click)="resetProductForm()">
@@ -422,11 +446,16 @@ export class ProductsPageComponent {
   private readonly auth = inject(AuthService);
   private readonly api = inject(ProductsApiService);
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
+  private legacyPrefillApplied = false;
+  private legacyAutoExportHandled = false;
 
   protected readonly isAdmin = this.auth.isAdmin;
   protected readonly products = signal<Product[]>([]);
   protected readonly categories = signal<ProductCategory[]>([]);
   protected readonly search = signal('');
+  protected readonly downloadingPdf = signal(false);
+  protected readonly downloadingCsv = signal(false);
   protected readonly savingProduct = signal(false);
   protected readonly savingCategory = signal(false);
   protected readonly savingAdjustment = signal(false);
@@ -435,6 +464,7 @@ export class ProductsPageComponent {
   protected readonly adjustmentError = signal<string | null>(null);
   protected readonly editingProductId = signal<number | null>(null);
   protected readonly editingCategoryId = signal<number | null>(null);
+  protected readonly legacyNotice = signal<string | null>(null);
 
   protected readonly trackedProductsCount = computed(
     () => this.products().filter((product) => product.track_stock).length,
@@ -488,11 +518,14 @@ export class ProductsPageComponent {
   });
 
   public constructor() {
+    this.legacyNotice.set(this.resolveLegacyNotice(this.route.snapshot.queryParamMap.get('legacy')));
     void this.load();
   }
 
   protected async load(): Promise<void> {
     await Promise.all([this.loadProducts(), this.loadCategories()]);
+    this.applyLegacyPrefillFromQuery();
+    await this.runLegacyAutoExport();
   }
 
   protected async loadProducts(): Promise<void> {
@@ -717,6 +750,34 @@ export class ProductsPageComponent {
     }
   }
 
+  protected async downloadCatalogPdf(): Promise<void> {
+    this.downloadingPdf.set(true);
+    this.error.set(null);
+
+    try {
+      const pdf = await this.api.downloadCatalogPdf(this.search());
+      this.triggerFileDownload(pdf, this.buildCatalogFileName('catalogo-productos', 'pdf'));
+    } catch (error) {
+      this.error.set(resolveApiError(error));
+    } finally {
+      this.downloadingPdf.set(false);
+    }
+  }
+
+  protected async downloadCatalogCsv(): Promise<void> {
+    this.downloadingCsv.set(true);
+    this.error.set(null);
+
+    try {
+      const csv = await this.api.downloadCatalogCsv(this.search());
+      this.triggerFileDownload(csv, this.buildCatalogFileName('catalogo-productos', 'csv'));
+    } catch (error) {
+      this.error.set(resolveApiError(error));
+    } finally {
+      this.downloadingCsv.set(false);
+    }
+  }
+
   protected formatCurrency(value: number): string {
     return this.moneyFormatter.format(value);
   }
@@ -774,5 +835,153 @@ export class ProductsPageComponent {
     const normalized = value?.trim() ?? '';
 
     return normalized === '' ? null : normalized;
+  }
+
+  private applyLegacyPrefillFromQuery(): void {
+    if (this.legacyPrefillApplied || !this.isAdmin()) {
+      this.legacyPrefillApplied = true;
+      return;
+    }
+
+    this.legacyPrefillApplied = true;
+
+    const query = this.route.snapshot.queryParamMap;
+    const legacyState = (query.get('legacy') ?? '').trim();
+
+    if (legacyState === 'product-category-write') {
+      const categoryName = this.nullableText(query.get('category_name'));
+
+      if (categoryName !== null) {
+        this.resetCategoryForm();
+        this.categoryForm.patchValue({
+          name: categoryName,
+        });
+      }
+
+      return;
+    }
+
+    const name = this.nullableText(query.get('name'));
+    const sku = this.nullableText(query.get('sku'));
+    const salePrice = this.normalizeNumber(query.get('sale_price'));
+    const costPrice = this.normalizeNumber(query.get('cost_price'));
+    const initialStock = this.normalizeNumber(query.get('initial_stock'));
+    const legacyCategoryName = this.nullableText(query.get('legacy_category_name'));
+
+    if (name === null && sku === null && salePrice === null && costPrice === null && initialStock === null && legacyCategoryName === null) {
+      return;
+    }
+
+    const categoryId = this.matchCategoryId(legacyCategoryName);
+
+    this.resetProductForm();
+    this.productForm.patchValue({
+      name: name ?? '',
+      sku: sku ?? '',
+      sale_price: salePrice ?? 0,
+      cost_price: costPrice ?? 0,
+      initial_stock: initialStock ?? 0,
+      category_id: categoryId !== null ? String(categoryId) : '',
+    });
+
+    if (legacyCategoryName !== null && categoryId === null) {
+      this.legacyNotice.set(
+        this.mergeLegacyNotice(
+          this.legacyNotice(),
+          `No encontramos la categoria legacy "${legacyCategoryName}". Seleccionala o crea una nueva antes de guardar.`,
+        ),
+      );
+    }
+  }
+
+  private async runLegacyAutoExport(): Promise<void> {
+    if (this.legacyAutoExportHandled) {
+      return;
+    }
+
+    this.legacyAutoExportHandled = true;
+
+    switch ((this.route.snapshot.queryParamMap.get('auto_export') ?? '').trim()) {
+      case 'pdf':
+        await this.downloadCatalogPdf();
+        break;
+      case 'csv':
+        await this.downloadCatalogCsv();
+        break;
+      default:
+        break;
+    }
+  }
+
+  private matchCategoryId(name: string | null): number | null {
+    if (name === null) {
+      return null;
+    }
+
+    const normalized = this.normalizeText(name);
+    const match = this.categories().find(
+      (category) =>
+        this.normalizeText(category.name) === normalized ||
+        this.normalizeText(category.slug) === normalized,
+    );
+
+    return match?.id ?? null;
+  }
+
+  private normalizeNumber(value: string | null): number | null {
+    if (value === null) {
+      return null;
+    }
+
+    const normalized = Number(value);
+
+    return Number.isFinite(normalized) ? normalized : null;
+  }
+
+  private normalizeText(value: string | null | undefined): string {
+    return (value ?? '').trim().toLowerCase();
+  }
+
+  private mergeLegacyNotice(base: string | null, extra: string): string {
+    return base ? `${base} ${extra}` : extra;
+  }
+
+  private triggerFileDownload(blob: Blob, fileName: string): void {
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(objectUrl);
+  }
+
+  private buildCatalogFileName(baseName: string, extension: 'pdf' | 'csv'): string {
+    const search = this.search().trim();
+    const suffix = search === '' ? '' : `-${this.safeFileNameSegment(search)}`;
+
+    return `${baseName}${suffix}.${extension}`;
+  }
+
+  private safeFileNameSegment(value: string): string {
+    const normalized = value.trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-_.]+|[-_.]+$/g, '');
+
+    return normalized === '' ? 'catalogo' : normalized;
+  }
+
+  private resolveLegacyNotice(value: string | null): string | null {
+    switch ((value ?? '').trim()) {
+      case 'product-form-write':
+        return 'El formulario legacy de productos fue retirado. Revisa los datos precargados y confirma la operacion desde este modulo.';
+      case 'product-form-delete':
+        return 'La eliminacion legacy de productos fue retirada. Usa este modulo para depurar o corregir el catalogo nuevo.';
+      case 'product-category-write':
+        return 'El formulario legacy de tipos de producto fue retirado. Completa la categoria desde este panel nuevo.';
+      case 'product-category-delete':
+        return 'La eliminacion legacy de tipos de producto fue retirada. Usa este modulo para administrar categorias.';
+      case 'catalog-report':
+        return 'El reporte legacy del catalogo ahora se descarga desde este modulo nuevo. Ya no depende del PDF antiguo del root PHP.';
+      default:
+        return null;
+    }
   }
 }

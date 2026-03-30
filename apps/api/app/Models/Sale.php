@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Sale extends Model
 {
@@ -18,6 +19,7 @@ class Sale extends Model
         'public_id',
         'customer_id',
         'user_id',
+        'cancelled_by_id',
         'cash_session_id',
         'status',
         'document_type',
@@ -28,7 +30,9 @@ class Sale extends Model
         'paid_total',
         'change_total',
         'notes',
+        'cancellation_reason',
         'sold_at',
+        'cancelled_at',
     ];
 
     protected function casts(): array
@@ -41,6 +45,7 @@ class Sale extends Model
             'paid_total' => 'decimal:2',
             'change_total' => 'decimal:2',
             'sold_at' => 'datetime',
+            'cancelled_at' => 'datetime',
         ];
     }
 
@@ -52,6 +57,11 @@ class Sale extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by_id');
     }
 
     public function cashSession(): BelongsTo
@@ -66,6 +76,18 @@ class Sale extends Model
 
     public function payments(): HasMany
     {
-        return $this->hasMany(SalePayment::class);
+        return $this->hasMany(SalePayment::class)
+            ->orderByDesc('paid_at')
+            ->orderByDesc('id');
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(SaleReturn::class)->orderByDesc('returned_at');
+    }
+
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class);
     }
 }

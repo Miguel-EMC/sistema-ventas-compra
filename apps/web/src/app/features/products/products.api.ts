@@ -16,17 +16,8 @@ export class ProductsApiService {
   private readonly http = inject(HttpClient);
 
   async listProducts(search = ''): Promise<Product[]> {
-    const params = new URLSearchParams();
-
-    if (search.trim() !== '') {
-      params.set('search', search.trim());
-    }
-
-    const queryString = params.toString();
-    const url = queryString === '' ? `${API_BASE_URL}/products` : `${API_BASE_URL}/products?${queryString}`;
-
     const response = await firstValueFrom(
-      this.http.get<ApiCollectionResponse<Product>>(url),
+      this.http.get<ApiCollectionResponse<Product>>(this.buildSearchUrl(`${API_BASE_URL}/products`, search)),
     );
 
     return response.data;
@@ -92,5 +83,33 @@ export class ProductsApiService {
     );
 
     return response.data;
+  }
+
+  async downloadCatalogPdf(search = ''): Promise<Blob> {
+    return await firstValueFrom(
+      this.http.get(this.buildSearchUrl(`${API_BASE_URL}/reports/catalog/products/pdf`, search), {
+        responseType: 'blob',
+      }),
+    );
+  }
+
+  async downloadCatalogCsv(search = ''): Promise<Blob> {
+    return await firstValueFrom(
+      this.http.get(this.buildSearchUrl(`${API_BASE_URL}/reports/catalog/products/csv`, search), {
+        responseType: 'blob',
+      }),
+    );
+  }
+
+  private buildSearchUrl(baseUrl: string, search = ''): string {
+    const params = new URLSearchParams();
+
+    if (search.trim() !== '') {
+      params.set('search', search.trim());
+    }
+
+    const queryString = params.toString();
+
+    return queryString === '' ? baseUrl : `${baseUrl}?${queryString}`;
   }
 }

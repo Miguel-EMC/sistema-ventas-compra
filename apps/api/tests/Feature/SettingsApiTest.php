@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Role;
+use App\Models\TaxResolution;
 use App\Models\User;
 use Database\Seeders\CoreReferenceSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,9 +36,13 @@ class SettingsApiTest extends TestCase
         $this->getJson('/api/v1/settings/business')
             ->assertOk()
             ->assertJsonPath('data.company_profile.legal_name', 'VentasPOS Demo')
+            ->assertJsonPath('data.company_profile.metadata.billing_owner_name', 'Administrador base')
             ->assertJsonPath('data.currency.code', 'USD')
             ->assertJsonPath('data.locale.code', 'es-EC')
-            ->assertJsonPath('data.system_settings.default_document_type', 'ticket');
+            ->assertJsonFragment(['code' => 'pt-BR'])
+            ->assertJsonFragment(['code' => 'PEN'])
+            ->assertJsonPath('data.system_settings.default_document_type', 'ticket')
+            ->assertJsonPath('data.active_tax_resolution.authorization_number', 'AUTH-DEMO-001');
     }
 
     public function test_admin_can_update_business_settings(): void
@@ -60,22 +65,44 @@ class SettingsApiTest extends TestCase
                 'city' => 'Quito',
                 'region' => 'Pichincha',
                 'country_code' => 'ec',
+                'metadata' => [
+                    'billing_owner_name' => 'Carlos Herrera',
+                    'billing_address_reference' => 'Local 4B',
+                ],
             ],
             'system_settings' => [
-                'currency_code' => 'USD',
-                'locale_code' => 'es-EC',
+                'currency_code' => 'PEN',
+                'locale_code' => 'pt-BR',
                 'timezone' => 'America/Guayaquil',
                 'tax_included_prices' => true,
                 'allow_negative_stock' => false,
                 'default_document_type' => 'factura',
                 'invoice_footer' => 'Gracias por su compra.',
             ],
+            'active_tax_resolution' => [
+                'name' => 'Dosificacion Casa Matriz',
+                'authorization_number' => 'AUTH-REAL-002',
+                'series' => '003-002',
+                'invoice_number_start' => 150,
+                'invoice_number_end' => 500,
+                'next_invoice_number' => 150,
+                'starts_at' => now()->toIso8601String(),
+                'ends_at' => now()->addMonths(6)->toIso8601String(),
+                'technical_key' => 'KEY-002',
+                'legend' => 'Valido para credito fiscal.',
+            ],
         ])->assertOk()
             ->assertJsonPath('data.company_profile.legal_name', 'Cafe Central S.A.S.')
             ->assertJsonPath('data.company_profile.country_code', 'EC')
+            ->assertJsonPath('data.company_profile.metadata.billing_owner_name', 'Carlos Herrera')
+            ->assertJsonPath('data.company_profile.metadata.billing_address_reference', 'Local 4B')
+            ->assertJsonPath('data.currency.code', 'PEN')
+            ->assertJsonPath('data.locale.code', 'pt-BR')
             ->assertJsonPath('data.system_settings.tax_included_prices', true)
             ->assertJsonPath('data.system_settings.default_document_type', 'factura')
-            ->assertJsonPath('data.system_settings.invoice_footer', 'Gracias por su compra.');
+            ->assertJsonPath('data.system_settings.invoice_footer', 'Gracias por su compra.')
+            ->assertJsonPath('data.active_tax_resolution.authorization_number', 'AUTH-REAL-002')
+            ->assertJsonPath('data.active_tax_resolution.next_invoice_number', 150);
 
         $this->assertDatabaseHas('company_profiles', [
             'legal_name' => 'Cafe Central S.A.S.',
@@ -86,6 +113,19 @@ class SettingsApiTest extends TestCase
         $this->assertDatabaseHas('system_settings', [
             'key' => 'default_document_type',
         ]);
+
+        $this->assertDatabaseHas('tax_resolutions', [
+            'authorization_number' => 'AUTH-REAL-002',
+            'series' => '003-002',
+            'next_invoice_number' => 150,
+            'is_active' => true,
+        ]);
+
+        $this->assertFalse(
+            TaxResolution::query()
+                ->where('authorization_number', 'AUTH-DEMO-001')
+                ->value('is_active')
+        );
     }
 
     public function test_cashier_cannot_update_business_settings(): void

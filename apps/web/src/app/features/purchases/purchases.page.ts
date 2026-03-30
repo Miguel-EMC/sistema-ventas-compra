@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
+import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { resolveApiError } from '../../core/http/resolve-api-error';
 import { SuppliersApiService } from '../suppliers/suppliers.api';
@@ -16,7 +17,18 @@ import { BusinessPartner } from '../partners/partners.types';
 import { ProductsApiService } from '../products/products.api';
 import { Product } from '../products/products.types';
 import { PurchasesApiService } from './purchases.api';
-import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purchases.types';
+import {
+  CreatePurchaseOrderPaymentPayload,
+  CreatePurchaseReturnPayload,
+  PurchaseOrder,
+  PurchaseOrderItem,
+  PurchaseOrderPayment,
+  PurchasePaymentMethod,
+  PurchasePaymentStatus,
+  PurchaseOrderPayload,
+  PurchaseReturn,
+  PurchaseOrderStatus,
+} from './purchases.types';
 
 @Component({
   selector: 'app-purchases-page',
@@ -39,11 +51,11 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
           <span class="page-kicker">Compras</span>
           <h1 class="page-title">Abastecimiento, recepcion y entrada de stock.</h1>
           <p class="page-description">
-            Este modulo ya conecta proveedores, productos y movimientos de ingreso para registrar
-            compras reales sobre la API nueva.
+            Este modulo ya conecta proveedores, productos y movimientos de stock para registrar
+            compras reales, recepciones, devoluciones, pagos y saldo pendiente sobre la API nueva.
           </p>
         </div>
-        <span class="pill">Compras + stock trazable</span>
+        <span class="pill">Compras + stock + cuentas por pagar</span>
       </header>
 
       @if (loading()) {
@@ -61,6 +73,13 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
         <article class="surface stack purchases-success">
           <span class="page-kicker">Compras</span>
           <strong>{{ successMessage() }}</strong>
+        </article>
+      }
+
+      @if (legacyNotice()) {
+        <article class="surface surface--muted stack">
+          <span class="page-kicker">Migracion</span>
+          <strong>{{ legacyNotice() }}</strong>
         </article>
       }
 
@@ -84,9 +103,27 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
         </article>
 
         <article class="surface metric-card">
+          <span class="metric-card__label">Anuladas</span>
+          <strong class="metric-card__value">{{ cancelledOrdersCount() }}</strong>
+          <span class="metric-card__hint">Ordenes cerradas con trazabilidad de anulacion.</span>
+        </article>
+
+        <article class="surface metric-card">
           <span class="metric-card__label">Monto total</span>
           <strong class="metric-card__value">{{ formatCurrency(totalPurchased()) }}</strong>
           <span class="metric-card__hint">Suma de ordenes listadas en el filtro actual.</span>
+        </article>
+
+        <article class="surface metric-card">
+          <span class="metric-card__label">Pagado</span>
+          <strong class="metric-card__value">{{ formatCurrency(totalPaid()) }}</strong>
+          <span class="metric-card__hint">Abonos registrados a proveedor en el filtro actual.</span>
+        </article>
+
+        <article class="surface metric-card">
+          <span class="metric-card__label">Por pagar</span>
+          <strong class="metric-card__value">{{ formatCurrency(totalOutstanding()) }}</strong>
+          <span class="metric-card__hint">Saldo pendiente despues de devoluciones y pagos.</span>
         </article>
       </section>
 
@@ -109,6 +146,7 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
               <mat-option value="">Todos</mat-option>
               <mat-option value="ordered">Pendiente</mat-option>
               <mat-option value="received">Recibida</mat-option>
+              <mat-option value="cancelled">Anulada</mat-option>
             </mat-select>
           </mat-form-field>
 
@@ -143,8 +181,18 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
                       <div class="purchase-order-row__header">
                         <strong>{{ order.supplier?.name || 'Proveedor sin registro' }}</strong>
                         <mat-chip-set>
-                          <mat-chip [class.purchase-chip-received]="order.status === 'received'">
+                          <mat-chip
+                            [class.purchase-chip-received]="order.status === 'received'"
+                            [class.purchase-chip-cancelled]="order.status === 'cancelled'"
+                          >
                             {{ labelForStatus(order.status) }}
+                          </mat-chip>
+                          <mat-chip
+                            [class.purchase-payment-chip-partial]="order.payment_status === 'partial'"
+                            [class.purchase-payment-chip-paid]="order.payment_status === 'paid'"
+                            [class.purchase-payment-chip-credit]="order.payment_status === 'credit'"
+                          >
+                            {{ labelForPaymentStatus(order.payment_status) }}
                           </mat-chip>
                           <mat-chip>{{ order.items_count }} item(s)</mat-chip>
                         </mat-chip-set>
@@ -159,6 +207,19 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
                         @if (order.received_at) {
                           · Recibida {{ formatDateTime(order.received_at) }}
                         }
+                        @if (order.cancelled_at) {
+                          · Anulada {{ formatDateTime(order.cancelled_at) }}
+                        }
+                      </small>
+                      @if (order.returns_count > 0) {
+                        <small>
+                          Devuelto {{ formatCurrency(order.returned_total) }} en
+                          {{ order.returns_count }} movimiento(s)
+                        </small>
+                      }
+                      <small>
+                        Pagado {{ formatCurrency(order.paid_total) }}
+                        · Saldo {{ formatCurrency(order.balance_due) }}
                       </small>
                     </div>
 
@@ -178,6 +239,16 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
                           [disabled]="receivingId() === order.id"
                         >
                           Recibir
+                        </button>
+                      }
+                      @if (auth.isAdmin() && order.status !== 'cancelled') {
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          (click)="prepareCancellation(order, $event)"
+                          [disabled]="cancellingId() === order.id"
+                        >
+                          Anular
                         </button>
                       }
                     </div>
@@ -206,12 +277,43 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
                 <div class="stack">
                   <mat-chip-set>
                     <mat-chip>{{ labelForStatus(order.status) }}</mat-chip>
+                    <mat-chip
+                      [class.purchase-payment-chip-partial]="order.payment_status === 'partial'"
+                      [class.purchase-payment-chip-paid]="order.payment_status === 'paid'"
+                      [class.purchase-payment-chip-credit]="order.payment_status === 'credit'"
+                    >
+                      {{ labelForPaymentStatus(order.payment_status) }}
+                    </mat-chip>
                     <mat-chip>{{ formatDate(order.ordered_at) }}</mat-chip>
                     <mat-chip>Proveedor {{ order.supplier?.name || 'Sin proveedor' }}</mat-chip>
+                    @if (order.returns_count > 0) {
+                      <mat-chip>Devuelto {{ formatCurrency(order.returned_total) }}</mat-chip>
+                    }
+                    @if (order.payments_count > 0) {
+                      <mat-chip>Pagado {{ formatCurrency(order.paid_total) }}</mat-chip>
+                    }
+                    <mat-chip>Saldo {{ formatCurrency(order.balance_due) }}</mat-chip>
+                    @if (order.cancelled_at) {
+                      <mat-chip>Anulada {{ formatDateTime(order.cancelled_at) }}</mat-chip>
+                    }
                   </mat-chip-set>
 
                   @if (order.notes) {
                     <p class="muted">{{ order.notes }}</p>
+                  }
+
+                  @if (order.cancellation_reason) {
+                    <article class="surface surface--muted stack purchases-warning">
+                      <span class="page-kicker">Anulacion</span>
+                      <strong>{{ order.cancellation_reason }}</strong>
+                      <span class="muted">
+                        @if (order.cancelled_by?.display_name || order.cancelled_by?.name) {
+                          Registrada por {{ order.cancelled_by?.display_name || order.cancelled_by?.name }}
+                        } @else {
+                          Sin usuario asociado
+                        }
+                      </span>
+                    </article>
                   }
 
                   <div class="purchase-detail-items">
@@ -224,6 +326,8 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
                           </span>
                           <small>
                             Recibido {{ formatNumber(item.quantity_received) }}
+                            · Devuelto {{ formatNumber(item.returned_quantity) }}
+                            · Restante {{ formatNumber(item.remaining_returnable_quantity) }}
                             @if (item.product) {
                               · Stock actual {{ formatNumber(item.product.current_stock) }}
                             }
@@ -241,7 +345,9 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
                   <div class="purchase-detail-summary">
                     <strong>Total {{ formatCurrency(order.grand_total) }}</strong>
                     <span>
-                      @if (order.received_by?.display_name || order.received_by?.name) {
+                      @if (order.cancelled_by?.display_name || order.cancelled_by?.name) {
+                        Anulada por {{ order.cancelled_by?.display_name || order.cancelled_by?.name }}
+                      } @else if (order.received_by?.display_name || order.received_by?.name) {
                         Recibida por {{ order.received_by?.display_name || order.received_by?.name }}
                       } @else if (order.created_by?.display_name || order.created_by?.name) {
                         Creada por {{ order.created_by?.display_name || order.created_by?.name }}
@@ -250,6 +356,360 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
                       }
                     </span>
                   </div>
+
+                  <mat-divider></mat-divider>
+
+                  <div class="stack">
+                    <span class="page-kicker">Cuentas por pagar</span>
+
+                    <div class="purchase-payment-summary">
+                      <article class="surface surface--muted purchase-payment-summary__card">
+                        <span class="metric-card__label">Neto a pagar</span>
+                        <strong>{{ formatCurrency(order.net_payable_total) }}</strong>
+                        <small>Total despues de devoluciones.</small>
+                      </article>
+
+                      <article class="surface surface--muted purchase-payment-summary__card">
+                        <span class="metric-card__label">Pagado</span>
+                        <strong>{{ formatCurrency(order.paid_total) }}</strong>
+                        <small>{{ order.payments_count }} pago(s) registrados.</small>
+                      </article>
+
+                      <article class="surface surface--muted purchase-payment-summary__card">
+                        <span class="metric-card__label">Saldo</span>
+                        <strong>{{ formatCurrency(order.balance_due) }}</strong>
+                        <small>{{ labelForPaymentStatus(order.payment_status) }}</small>
+                      </article>
+                    </div>
+
+                    @if (order.payment_status === 'credit') {
+                      <article class="surface surface--muted stack purchases-warning">
+                        <span class="page-kicker">Credito a favor</span>
+                        <strong>
+                          Las devoluciones ya superan lo pagado y queda un saldo a favor con el proveedor.
+                        </strong>
+                      </article>
+                    }
+
+                    @if (auth.isAdmin() && order.status === 'received') {
+                      <div class="stack">
+                        <span class="page-kicker">Registrar pago</span>
+
+                        @if (order.balance_due <= 0) {
+                          <p class="muted">
+                            Esta compra ya no tiene saldo pendiente para nuevos pagos.
+                          </p>
+                        } @else {
+                          <div class="purchase-payment-form-grid">
+                            <mat-form-field appearance="outline">
+                              <mat-label>Metodo</mat-label>
+                              <mat-select
+                                [value]="purchasePaymentMethod()"
+                                (selectionChange)="onPurchasePaymentMethodChange($event.value)"
+                              >
+                                @for (paymentMethod of paymentMethods; track paymentMethod.value) {
+                                  <mat-option [value]="paymentMethod.value">
+                                    {{ paymentMethod.label }}
+                                  </mat-option>
+                                }
+                              </mat-select>
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline">
+                              <mat-label>Monto</mat-label>
+                              <input
+                                matInput
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                [value]="purchasePaymentAmount()"
+                                [disabled]="payingOrderId() === order.id"
+                                (input)="onPurchasePaymentAmountChange($event)"
+                              />
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline">
+                              <mat-label>Referencia</mat-label>
+                              <input
+                                matInput
+                                type="text"
+                                [value]="purchasePaymentReference()"
+                                [disabled]="payingOrderId() === order.id"
+                                (input)="onPurchasePaymentReferenceChange($event)"
+                              />
+                            </mat-form-field>
+                          </div>
+
+                          <mat-form-field appearance="outline">
+                            <mat-label>Notas internas</mat-label>
+                            <textarea
+                              matInput
+                              rows="3"
+                              [value]="purchasePaymentNotes()"
+                              [disabled]="payingOrderId() === order.id"
+                              (input)="onPurchasePaymentNotesChange($event)"
+                            ></textarea>
+                          </mat-form-field>
+
+                          @if (purchasePaymentMethod() === 'cash') {
+                            <p class="muted purchases-warning-text">
+                              Los pagos en efectivo requieren una caja abierta para el usuario actual.
+                            </p>
+                          }
+
+                          <mat-chip-set>
+                            <mat-chip highlighted>
+                              Saldo actual {{ formatCurrency(order.balance_due) }}
+                            </mat-chip>
+                            <mat-chip>
+                              Nuevo saldo estimado
+                              {{ formatCurrency(estimatedBalanceAfterPayment(order)) }}
+                            </mat-chip>
+                          </mat-chip-set>
+                          <div class="cta-row">
+                            <button
+                              mat-stroked-button
+                              type="button"
+                              (click)="setOutstandingPaymentAmount(order)"
+                              [disabled]="payingOrderId() === order.id"
+                            >
+                              Usar saldo pendiente
+                            </button>
+                            <button
+                              mat-flat-button
+                              color="primary"
+                              type="button"
+                              (click)="createPurchasePayment()"
+                              [disabled]="isPaymentDisabled(order)"
+                            >
+                              Registrar pago
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    }
+
+                    <div class="stack">
+                      <span class="page-kicker">Historial de pagos</span>
+
+                      @if (order.payments.length === 0) {
+                        <p class="muted">
+                          Esta orden todavia no tiene pagos registrados.
+                        </p>
+                      } @else {
+                        <div class="purchase-payment-history">
+                          @for (payment of order.payments; track payment.id) {
+                            <article class="purchase-payment-history-item">
+                              <div class="purchase-detail-item__copy">
+                                <strong>{{ payment.public_id || '#' + payment.id }}</strong>
+                                <span>
+                                  {{ formatDateTime(payment.paid_at) }}
+                                  @if (payment.paid_by?.name) {
+                                    · {{ payment.paid_by?.name }}
+                                  }
+                                  @if (payment.cash_session?.register_name) {
+                                    · {{ payment.cash_session?.register_name }}
+                                  }
+                                </span>
+                                <small>
+                                  {{ formatPaymentMethod(payment.method) }}
+                                  @if (payment.reference) {
+                                    · Ref {{ payment.reference }}
+                                  }
+                                </small>
+                                @if (payment.notes) {
+                                  <small>{{ payment.notes }}</small>
+                                }
+                              </div>
+                              <div class="purchase-detail-item__amount">
+                                {{ formatCurrency(payment.amount) }}
+                              </div>
+                            </article>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  @if (auth.isAdmin() && order.status === 'received') {
+                    <mat-divider></mat-divider>
+
+                    <div class="stack">
+                      <span class="page-kicker">Devolucion a proveedor</span>
+
+                      @if (!hasReturnableItems(order)) {
+                        <p class="muted">
+                          Todos los items recibidos ya fueron devueltos por completo.
+                        </p>
+                      } @else {
+                        <div class="purchase-return-items">
+                          @for (item of order.items; track item.id) {
+                            @if (item.remaining_returnable_quantity > 0) {
+                              <article class="purchase-return-item">
+                                <div class="purchase-detail-item__copy">
+                                  <strong>{{ item.name_snapshot }}</strong>
+                                  <span>
+                                    Devuelto {{ formatNumber(item.returned_quantity) }} de
+                                    {{ formatNumber(item.quantity_received) }}
+                                  </span>
+                                  <small>
+                                    Restante {{ formatNumber(item.remaining_returnable_quantity) }} ·
+                                    Costo {{ formatCurrency(item.unit_cost) }}
+                                  </small>
+                                </div>
+
+                                <div class="purchase-return-item__entry">
+                                  <mat-form-field appearance="outline">
+                                    <mat-label>Cantidad a devolver</mat-label>
+                                    <input
+                                      matInput
+                                      type="number"
+                                      min="0"
+                                      [max]="item.remaining_returnable_quantity"
+                                      step="0.01"
+                                      [value]="getReturnQuantity(item.id)"
+                                      [disabled]="returningOrderId() === order.id"
+                                      (input)="onReturnQuantityChange(item, $event)"
+                                    />
+                                  </mat-form-field>
+
+                                  <button
+                                    mat-stroked-button
+                                    type="button"
+                                    (click)="setMaxReturnQuantity(item)"
+                                    [disabled]="returningOrderId() === order.id"
+                                  >
+                                    Maximo
+                                  </button>
+                                </div>
+                              </article>
+                            }
+                          }
+                        </div>
+
+                        <mat-form-field appearance="outline">
+                          <mat-label>Motivo general</mat-label>
+                          <textarea
+                            matInput
+                            rows="3"
+                            [value]="purchaseReturnReason()"
+                            (input)="onPurchaseReturnReasonChange($event)"
+                          ></textarea>
+                        </mat-form-field>
+
+                        <mat-form-field appearance="outline">
+                          <mat-label>Notas internas</mat-label>
+                          <textarea
+                            matInput
+                            rows="3"
+                            [value]="purchaseReturnNotes()"
+                            (input)="onPurchaseReturnNotesChange($event)"
+                          ></textarea>
+                        </mat-form-field>
+
+                        <div class="cta-row">
+                          <mat-chip-set>
+                            <mat-chip>Items seleccionados {{ selectedReturnEntries().length }}</mat-chip>
+                            <mat-chip highlighted>
+                              Total devuelto {{ formatCurrency(selectedReturnTotal()) }}
+                            </mat-chip>
+                          </mat-chip-set>
+                        </div>
+
+                        <div class="cta-row">
+                          <button
+                            mat-flat-button
+                            color="primary"
+                            type="button"
+                            (click)="createPurchaseReturn()"
+                            [disabled]="isPurchaseReturnDisabled(order)"
+                          >
+                            Registrar devolucion
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  <mat-divider></mat-divider>
+
+                  <div class="stack">
+                    <span class="page-kicker">Historial de devoluciones</span>
+
+                    @if (order.returns.length === 0) {
+                      <p class="muted">
+                        Esta orden todavia no tiene devoluciones parciales registradas.
+                      </p>
+                    } @else {
+                      <div class="purchase-return-history">
+                        @for (purchaseReturn of order.returns; track purchaseReturn.id) {
+                          <article class="purchase-return-history-item">
+                            <div class="purchase-detail-item__copy">
+                              <strong>{{ purchaseReturn.public_id || '#' + purchaseReturn.id }}</strong>
+                              <span>
+                                {{ formatDateTime(purchaseReturn.returned_at) }}
+                                @if (purchaseReturn.returned_by?.display_name || purchaseReturn.returned_by?.name) {
+                                  · {{ purchaseReturn.returned_by?.display_name || purchaseReturn.returned_by?.name }}
+                                }
+                              </span>
+                              <small>{{ purchaseReturn.reason }}</small>
+                              <mat-chip-set>
+                                <mat-chip>Total {{ formatCurrency(purchaseReturn.return_total) }}</mat-chip>
+                                @for (item of purchaseReturn.items; track item.id) {
+                                  <mat-chip>
+                                    {{ item.name_snapshot }} · {{ formatNumber(item.quantity) }}
+                                  </mat-chip>
+                                }
+                              </mat-chip-set>
+                            </div>
+                            <div class="purchase-detail-item__amount">
+                              {{ formatCurrency(purchaseReturn.return_total) }}
+                            </div>
+                          </article>
+                        }
+                      </div>
+                    }
+                  </div>
+
+                  @if (auth.isAdmin() && order.status !== 'cancelled') {
+                    <mat-divider></mat-divider>
+
+                    <div class="stack">
+                      <span class="page-kicker">Anular orden</span>
+                      @if (order.payments_count > 0) {
+                        <p class="muted purchases-warning-text">
+                          La anulacion queda bloqueada porque la compra ya tiene pagos registrados.
+                        </p>
+                      }
+                      <mat-form-field appearance="outline">
+                        <mat-label>Motivo de anulacion</mat-label>
+                        <textarea
+                          matInput
+                          rows="3"
+                          [value]="purchaseCancellationReason()"
+                          (input)="onPurchaseCancellationReasonChange($event)"
+                        ></textarea>
+                      </mat-form-field>
+
+                      @if (order.status === 'received') {
+                        <p class="muted purchases-warning-text">
+                          Esta accion revertira la entrada de stock de la compra, siempre que el
+                          inventario actual alcance para hacer la reversa.
+                        </p>
+                      }
+
+                      <div class="cta-row">
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          (click)="cancelSelectedOrder()"
+                          [disabled]="cancellingId() === order.id || order.payments_count > 0"
+                        >
+                          Confirmar anulacion
+                        </button>
+                      </div>
+                    </div>
+                  }
                 </div>
               } @else {
                 <p class="muted">Aqui veras el detalle, los items y el estado de la orden seleccionada.</p>
@@ -433,6 +893,11 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
       background: rgba(19, 128, 77, 0.08);
     }
 
+    .purchases-warning {
+      border-color: rgba(180, 83, 9, 0.18);
+      background: rgba(180, 83, 9, 0.08);
+    }
+
     .purchases-toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -447,14 +912,21 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
 
     .purchase-order-list,
     .purchase-detail-items,
-    .purchase-form-items {
+    .purchase-form-items,
+    .purchase-payment-history,
+    .purchase-payment-summary,
+    .purchase-return-items,
+    .purchase-return-history {
       display: grid;
       gap: 0.85rem;
     }
 
     .purchase-order-row,
     .purchase-detail-item,
-    .purchase-form-item {
+    .purchase-payment-history-item,
+    .purchase-form-item,
+    .purchase-return-item,
+    .purchase-return-history-item {
       display: grid;
       gap: 0.75rem;
       border: 1px solid var(--border);
@@ -481,7 +953,10 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
     .purchase-order-row__header,
     .purchase-order-row__actions,
     .purchase-form-item__meta,
-    .purchase-detail-item {
+    .purchase-detail-item,
+    .purchase-payment-history-item,
+    .purchase-return-item__entry,
+    .purchase-return-history-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -508,6 +983,26 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
     .purchase-detail-item__amount {
       font-weight: 700;
       white-space: nowrap;
+    }
+
+    .purchase-return-item__entry mat-form-field {
+      flex: 1;
+    }
+
+    .purchase-payment-summary {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .purchase-payment-summary__card {
+      display: grid;
+      gap: 0.25rem;
+      border-radius: 1rem;
+    }
+
+    .purchase-payment-form-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .purchases-form-grid,
@@ -538,8 +1033,34 @@ import { PurchaseOrder, PurchaseOrderPayload, PurchaseOrderStatus } from './purc
       color: #166534;
     }
 
+    .purchase-chip-cancelled {
+      background: rgba(148, 28, 28, 0.14);
+      color: #991b1b;
+    }
+
+    .purchase-payment-chip-partial {
+      background: rgba(180, 83, 9, 0.14);
+      color: #92400e;
+    }
+
+    .purchase-payment-chip-paid {
+      background: rgba(19, 128, 77, 0.14);
+      color: #166534;
+    }
+
+    .purchase-payment-chip-credit {
+      background: rgba(15, 76, 129, 0.14);
+      color: #0f4c81;
+    }
+
+    .purchases-warning-text {
+      color: var(--text-muted);
+    }
+
     @media (max-width: 1180px) {
       .purchases-layout,
+      .purchase-payment-form-grid,
+      .purchase-payment-summary,
       .purchases-form-grid,
       .purchase-form-item__grid {
         grid-template-columns: 1fr;
@@ -551,6 +1072,7 @@ export class PurchasesPageComponent {
   protected readonly auth = inject(AuthService);
 
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
   private readonly purchasesApi = inject(PurchasesApiService);
   private readonly suppliersApi = inject(SuppliersApiService);
   private readonly productsApi = inject(ProductsApiService);
@@ -558,8 +1080,12 @@ export class PurchasesPageComponent {
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly receivingId = signal<number | null>(null);
+  protected readonly cancellingId = signal<number | null>(null);
+  protected readonly payingOrderId = signal<number | null>(null);
+  protected readonly returningOrderId = signal<number | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly successMessage = signal<string | null>(null);
+  protected readonly legacyNotice = signal<string | null>(null);
 
   protected readonly orders = signal<PurchaseOrder[]>([]);
   protected readonly suppliers = signal<BusinessPartner[]>([]);
@@ -568,6 +1094,16 @@ export class PurchasesPageComponent {
   protected readonly statusFilter = signal('');
   protected readonly selectedOrderId = signal<number | null>(null);
   protected readonly editingOrderId = signal<number | null>(null);
+  protected readonly purchaseCancellationReason = signal('');
+  protected readonly purchasePaymentMethod = signal<PurchasePaymentMethod>('transfer');
+  protected readonly purchasePaymentAmount = signal(0);
+  protected readonly purchasePaymentReference = signal('');
+  protected readonly purchasePaymentNotes = signal('');
+  protected readonly purchaseReturnReason = signal(
+    'Devolucion parcial registrada desde la nueva plataforma.',
+  );
+  protected readonly purchaseReturnNotes = signal('');
+  protected readonly purchaseReturnQuantities = signal<Record<number, number>>({});
 
   protected readonly selectedOrder = computed(() =>
     this.orders().find((order) => order.id === this.selectedOrderId()) ?? null,
@@ -581,8 +1117,51 @@ export class PurchasesPageComponent {
     () => this.orders().filter((order) => order.status === 'received').length,
   );
 
+  protected readonly cancelledOrdersCount = computed(
+    () => this.orders().filter((order) => order.status === 'cancelled').length,
+  );
+
   protected readonly totalPurchased = computed(() =>
     this.orders().reduce((total, order) => total + order.grand_total, 0),
+  );
+
+  protected readonly totalPaid = computed(() =>
+    this.orders().reduce((total, order) => total + order.paid_total, 0),
+  );
+
+  protected readonly totalOutstanding = computed(() =>
+    this.orders().reduce((total, order) => total + Math.max(0, order.balance_due), 0),
+  );
+
+  protected readonly selectedReturnEntries = computed(() => {
+    const order = this.selectedOrder();
+
+    if (!order) {
+      return [];
+    }
+
+    const quantities = this.purchaseReturnQuantities();
+
+    return order.items
+      .map((item) => {
+        const quantity = this.normalizeReturnQuantity(
+          quantities[item.id] ?? 0,
+          item.remaining_returnable_quantity,
+        );
+
+        return {
+          item,
+          quantity,
+          line_total: this.roundCurrency(quantity * item.unit_cost),
+        };
+      })
+      .filter((entry) => entry.quantity > 0);
+  });
+
+  protected readonly selectedReturnTotal = computed(() =>
+    this.roundCurrency(
+      this.selectedReturnEntries().reduce((total, entry) => total + entry.line_total, 0),
+    ),
   );
 
   protected readonly form = this.fb.group({
@@ -612,7 +1191,15 @@ export class PurchasesPageComponent {
     timeStyle: 'short',
   });
 
+  protected readonly paymentMethods: Array<{ value: PurchasePaymentMethod; label: string }> = [
+    { value: 'transfer', label: 'Transferencia' },
+    { value: 'cash', label: 'Efectivo' },
+    { value: 'card', label: 'Tarjeta' },
+    { value: 'check', label: 'Cheque' },
+  ];
+
   public constructor() {
+    this.legacyNotice.set(this.resolveLegacyNotice(this.route.snapshot.queryParamMap.get('legacy')));
     void this.load();
   }
 
@@ -622,6 +1209,7 @@ export class PurchasesPageComponent {
 
     try {
       await Promise.all([this.loadOrders(), this.loadSuppliers(), this.loadProducts()]);
+      this.applyLegacyPrefillFromQuery();
     } catch (error) {
       this.error.set(resolveApiError(error));
     } finally {
@@ -640,12 +1228,19 @@ export class PurchasesPageComponent {
 
     if (orders.length === 0) {
       this.selectedOrderId.set(null);
+      this.purchaseCancellationReason.set('');
+      this.resetPurchasePaymentForm();
+      this.resetPurchaseReturnForm();
       return;
     }
 
     const currentSelectedId = this.selectedOrderId();
     const selected = currentSelectedId ? orders.find((order) => order.id === currentSelectedId) : null;
-    this.selectedOrderId.set(selected?.id ?? orders[0]?.id ?? null);
+    const nextSelected = selected ?? orders[0] ?? null;
+    this.selectedOrderId.set(nextSelected?.id ?? null);
+    this.purchaseCancellationReason.set(nextSelected?.cancellation_reason ?? '');
+    this.resetPurchasePaymentForm(nextSelected);
+    this.resetPurchaseReturnForm(nextSelected);
   }
 
   protected async loadSuppliers(): Promise<void> {
@@ -669,6 +1264,9 @@ export class PurchasesPageComponent {
 
   protected selectOrder(order: PurchaseOrder): void {
     this.selectedOrderId.set(order.id);
+    this.purchaseCancellationReason.set(order.cancellation_reason ?? '');
+    this.resetPurchasePaymentForm(order);
+    this.resetPurchaseReturnForm(order);
   }
 
   protected selectOnly(order: PurchaseOrder, event: Event): void {
@@ -680,7 +1278,25 @@ export class PurchasesPageComponent {
     event.stopPropagation();
     this.selectedOrderId.set(order.id);
     this.editingOrderId.set(order.id);
+    this.purchaseCancellationReason.set(order.cancellation_reason ?? '');
+    this.resetPurchasePaymentForm(order);
+    this.resetPurchaseReturnForm(order);
     this.applyOrderToForm(order);
+  }
+
+  protected prepareCancellation(order: PurchaseOrder, event: Event): void {
+    event.stopPropagation();
+    this.selectOrder(order);
+
+    if (this.purchaseCancellationReason().trim() !== '') {
+      return;
+    }
+
+    this.purchaseCancellationReason.set(
+      order.status === 'received'
+        ? 'Anulacion de compra recibida por inconsistencia con proveedor.'
+        : 'Anulacion de orden de compra.',
+    );
   }
 
   protected async receiveOrder(order: PurchaseOrder, event: Event): Promise<void> {
@@ -743,8 +1359,204 @@ export class PurchasesPageComponent {
     }
   }
 
+  protected onPurchaseCancellationReasonChange(event: Event): void {
+    const target = event.target as HTMLTextAreaElement;
+    this.purchaseCancellationReason.set(target.value);
+  }
+
+  protected onPurchasePaymentMethodChange(value: PurchasePaymentMethod): void {
+    this.purchasePaymentMethod.set(value ?? 'transfer');
+  }
+
+  protected onPurchasePaymentAmountChange(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this.purchasePaymentAmount.set(this.normalizePaymentAmount(Number(target.value || 0)));
+  }
+
+  protected onPurchasePaymentReferenceChange(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    this.purchasePaymentReference.set(target.value);
+  }
+
+  protected onPurchasePaymentNotesChange(event: Event): void {
+    const target = event.target as HTMLTextAreaElement;
+    this.purchasePaymentNotes.set(target.value);
+  }
+
+  protected setOutstandingPaymentAmount(order: PurchaseOrder): void {
+    this.purchasePaymentAmount.set(this.normalizePaymentAmount(Math.max(0, order.balance_due)));
+  }
+
+  protected isPaymentDisabled(order: PurchaseOrder): boolean {
+    const amount = this.normalizePaymentAmount(this.purchasePaymentAmount());
+
+    return (
+      this.payingOrderId() === order.id ||
+      order.status !== 'received' ||
+      order.balance_due <= 0 ||
+      amount <= 0 ||
+      amount > order.balance_due
+    );
+  }
+
+  protected async createPurchasePayment(): Promise<void> {
+    const order = this.selectedOrder();
+
+    if (!order) {
+      return;
+    }
+
+    const payload = this.buildPurchasePaymentPayload(order);
+
+    if (!payload) {
+      return;
+    }
+
+    this.payingOrderId.set(order.id);
+    this.error.set(null);
+    this.successMessage.set(null);
+
+    try {
+      const payment = await this.purchasesApi.createPayment(order.id, payload);
+
+      this.successMessage.set(
+        `El pago ${payment.public_id || '#' + payment.id} fue registrado por ${this.formatCurrency(payment.amount)} en ${this.formatPaymentMethod(payment.method).toLowerCase()}.`,
+      );
+
+      await this.loadOrders();
+    } catch (error) {
+      this.error.set(resolveApiError(error));
+    } finally {
+      this.payingOrderId.set(null);
+    }
+  }
+
+  protected async cancelSelectedOrder(): Promise<void> {
+    const order = this.selectedOrder();
+
+    if (!order) {
+      return;
+    }
+
+    const cancellationReason = this.nullableText(this.purchaseCancellationReason());
+
+    if (!cancellationReason) {
+      this.error.set('Debes registrar un motivo antes de anular la orden.');
+      return;
+    }
+
+    this.cancellingId.set(order.id);
+    this.error.set(null);
+    this.successMessage.set(null);
+
+    try {
+      const cancelledOrder = await this.purchasesApi.cancel(order.id, {
+        cancellation_reason: cancellationReason,
+      });
+
+      this.successMessage.set(
+        cancelledOrder.status === 'cancelled' && order.status === 'received'
+          ? `La orden ${cancelledOrder.reference || cancelledOrder.public_id || '#' + cancelledOrder.id} fue anulada y el stock ya se revirtio.`
+          : `La orden ${cancelledOrder.reference || cancelledOrder.public_id || '#' + cancelledOrder.id} fue anulada correctamente.`,
+      );
+      this.selectedOrderId.set(cancelledOrder.id);
+      this.editingOrderId.set(null);
+      this.purchaseCancellationReason.set(cancelledOrder.cancellation_reason ?? '');
+      this.resetForm(false);
+      await Promise.all([this.loadOrders(), this.loadProducts()]);
+    } catch (error) {
+      this.error.set(resolveApiError(error));
+    } finally {
+      this.cancellingId.set(null);
+    }
+  }
+
+  protected hasReturnableItems(order: PurchaseOrder): boolean {
+    return order.items.some((item) => item.remaining_returnable_quantity > 0);
+  }
+
+  protected getReturnQuantity(itemId: number): number {
+    return this.purchaseReturnQuantities()[itemId] ?? 0;
+  }
+
+  protected onReturnQuantityChange(item: PurchaseOrderItem, event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const quantity = this.normalizeReturnQuantity(
+      Number(target.value || 0),
+      item.remaining_returnable_quantity,
+    );
+
+    this.purchaseReturnQuantities.update((current) => ({
+      ...current,
+      [item.id]: quantity,
+    }));
+  }
+
+  protected setMaxReturnQuantity(item: PurchaseOrderItem): void {
+    this.purchaseReturnQuantities.update((current) => ({
+      ...current,
+      [item.id]: this.normalizeReturnQuantity(
+        item.remaining_returnable_quantity,
+        item.remaining_returnable_quantity,
+      ),
+    }));
+  }
+
+  protected onPurchaseReturnReasonChange(event: Event): void {
+    const target = event.target as HTMLTextAreaElement;
+    this.purchaseReturnReason.set(target.value);
+  }
+
+  protected onPurchaseReturnNotesChange(event: Event): void {
+    const target = event.target as HTMLTextAreaElement;
+    this.purchaseReturnNotes.set(target.value);
+  }
+
+  protected isPurchaseReturnDisabled(order: PurchaseOrder): boolean {
+    return (
+      this.returningOrderId() === order.id ||
+      order.status !== 'received' ||
+      !this.hasReturnableItems(order) ||
+      this.selectedReturnEntries().length === 0 ||
+      !this.nullableText(this.purchaseReturnReason())
+    );
+  }
+
+  protected async createPurchaseReturn(): Promise<void> {
+    const order = this.selectedOrder();
+
+    if (!order) {
+      return;
+    }
+
+    const payload = this.buildPurchaseReturnPayload();
+
+    if (!payload) {
+      return;
+    }
+
+    this.returningOrderId.set(order.id);
+    this.error.set(null);
+    this.successMessage.set(null);
+
+    try {
+      const purchaseReturn = await this.purchasesApi.createReturn(order.id, payload);
+
+      this.successMessage.set(
+        `La devolucion ${purchaseReturn.public_id || '#' + purchaseReturn.id} fue registrada por ${this.formatCurrency(purchaseReturn.return_total)}.`,
+      );
+
+      await Promise.all([this.loadOrders(), this.loadProducts()]);
+    } catch (error) {
+      this.error.set(resolveApiError(error));
+    } finally {
+      this.returningOrderId.set(null);
+    }
+  }
+
   protected resetForm(resetSelection = true): void {
     this.editingOrderId.set(null);
+    this.purchaseCancellationReason.set('');
     this.form.reset({
       supplier_id: '',
       reference: '',
@@ -755,7 +1567,10 @@ export class PurchasesPageComponent {
     this.itemsArray.push(this.createItemGroup());
 
     if (resetSelection) {
-      this.selectedOrderId.set(this.orders()[0]?.id ?? null);
+      const nextOrder = this.orders()[0] ?? null;
+      this.selectedOrderId.set(nextOrder?.id ?? null);
+      this.resetPurchasePaymentForm(nextOrder);
+      this.resetPurchaseReturnForm(nextOrder);
     }
   }
 
@@ -809,9 +1624,43 @@ export class PurchasesPageComponent {
         return 'Recibida';
       case 'ordered':
         return 'Pendiente';
+      case 'cancelled':
+        return 'Anulada';
       default:
         return status;
     }
+  }
+
+  protected labelForPaymentStatus(status: PurchasePaymentStatus): string {
+    switch (status) {
+      case 'partial':
+        return 'Pago parcial';
+      case 'paid':
+        return 'Pagada';
+      case 'credit':
+        return 'Credito a favor';
+      case 'pending':
+      default:
+        return 'Pendiente de pago';
+    }
+  }
+
+  protected formatPaymentMethod(method: PurchasePaymentMethod): string {
+    switch (method) {
+      case 'cash':
+        return 'Efectivo';
+      case 'card':
+        return 'Tarjeta';
+      case 'check':
+        return 'Cheque';
+      case 'transfer':
+      default:
+        return 'Transferencia';
+    }
+  }
+
+  protected estimatedBalanceAfterPayment(order: PurchaseOrder): number {
+    return this.roundCurrency(order.balance_due - this.purchasePaymentAmount());
   }
 
   protected formatCurrency(value: number): string {
@@ -849,6 +1698,90 @@ export class PurchasesPageComponent {
       unit_cost: [0, [Validators.required, Validators.min(0)]],
       notes: [''],
     });
+  }
+
+  private applyLegacyPrefillFromQuery(): void {
+    const query = this.route.snapshot.queryParamMap;
+    const supplierName = this.nullableText(query.get('supplier_name'));
+    const orderedAt = this.normalizeLegacyDate(query.get('ordered_at'));
+    const legacyNote = this.buildLegacyPurchaseNote(
+      this.nullableText(query.get('legacy_note')),
+      this.nullableText(query.get('legacy_total')),
+    );
+
+    if (supplierName === null && orderedAt === null && legacyNote === null) {
+      return;
+    }
+
+    const matchedSupplier =
+      supplierName === null
+        ? null
+        : this.suppliers().find(
+            (supplier) => supplier.name.trim().toLowerCase() === supplierName.toLowerCase(),
+          ) ?? null;
+
+    this.resetForm(false);
+    this.form.patchValue({
+      supplier_id: matchedSupplier?.id ? String(matchedSupplier.id) : '',
+      ordered_at: orderedAt ?? this.form.getRawValue().ordered_at,
+      notes: legacyNote ?? '',
+    });
+
+    if (supplierName !== null && matchedSupplier === null) {
+      this.legacyNotice.set(
+        this.mergeLegacyNotice(
+          this.legacyNotice(),
+          `No encontramos el proveedor legacy "${supplierName}". Seleccionalo manualmente antes de guardar la nueva orden.`,
+        ),
+      );
+    }
+  }
+
+  private resolveLegacyNotice(value: string | null): string | null {
+    switch ((value ?? '').trim()) {
+      case 'company-orders':
+        return 'El antiguo modulo Pedido de empresa fue absorbido por Compras. Ahora las ordenes se registran con items detallados y stock real.';
+      case 'company-orders-write':
+        return 'El formulario legacy de pedidos ya no guarda registros. Revise los datos precargados y reconstruya la orden en el flujo nuevo.';
+      case 'company-orders-delete':
+        return 'La eliminacion legacy fue retirada. Usa el estado y las anulaciones del modulo Compras para cerrar ordenes.';
+      default:
+        return null;
+    }
+  }
+
+  private mergeLegacyNotice(base: string | null, extra: string): string {
+    const normalizedBase = base?.trim() ?? '';
+
+    if (normalizedBase === '') {
+      return extra;
+    }
+
+    return `${normalizedBase} ${extra}`;
+  }
+
+  private normalizeLegacyDate(value: string | null): string | null {
+    const normalized = (value ?? '').trim();
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+      return normalized;
+    }
+
+    return null;
+  }
+
+  private buildLegacyPurchaseNote(description: string | null, total: string | null): string | null {
+    const parts: string[] = [];
+
+    if (description !== null) {
+      parts.push(`Pedido legacy: ${description}`);
+    }
+
+    if (total !== null) {
+      parts.push(`Monto referencial legacy: ${total}`);
+    }
+
+    return parts.length === 0 ? null : parts.join(' · ');
   }
 
   private applyOrderToForm(order: PurchaseOrder): void {
@@ -896,6 +1829,90 @@ export class PurchasesPageComponent {
         };
       }),
     };
+  }
+
+  private buildPurchaseReturnPayload(): CreatePurchaseReturnPayload | null {
+    const reason = this.nullableText(this.purchaseReturnReason());
+
+    if (!reason) {
+      this.error.set('Debes registrar un motivo antes de devolver mercaderia.');
+      return null;
+    }
+
+    const items = this.selectedReturnEntries().map((entry) => ({
+      purchase_order_item_id: entry.item.id,
+      quantity: entry.quantity,
+      reason: null,
+    }));
+
+    if (items.length === 0) {
+      this.error.set('Selecciona al menos una cantidad pendiente antes de registrar la devolucion.');
+      return null;
+    }
+
+    return {
+      returned_at: new Date().toISOString(),
+      reason,
+      notes: this.nullableText(this.purchaseReturnNotes()),
+      items,
+    };
+  }
+
+  private buildPurchasePaymentPayload(order: PurchaseOrder): CreatePurchaseOrderPaymentPayload | null {
+    const amount = this.normalizePaymentAmount(this.purchasePaymentAmount());
+
+    if (amount <= 0) {
+      this.error.set('Debes registrar un monto valido antes de guardar el pago.');
+      return null;
+    }
+
+    if (amount > order.balance_due) {
+      this.error.set('El monto no puede superar el saldo pendiente de la compra.');
+      return null;
+    }
+
+    return {
+      method: this.purchasePaymentMethod(),
+      amount,
+      reference: this.nullableText(this.purchasePaymentReference()),
+      notes: this.nullableText(this.purchasePaymentNotes()),
+      paid_at: new Date().toISOString(),
+    };
+  }
+
+  private resetPurchasePaymentForm(order: PurchaseOrder | null = null): void {
+    this.purchasePaymentMethod.set('transfer');
+    this.purchasePaymentAmount.set(this.normalizePaymentAmount(Math.max(0, order?.balance_due ?? 0)));
+    this.purchasePaymentReference.set('');
+    this.purchasePaymentNotes.set('');
+  }
+
+  private resetPurchaseReturnForm(order: PurchaseOrder | null = null): void {
+    this.purchaseReturnReason.set('Devolucion parcial registrada desde la nueva plataforma.');
+    this.purchaseReturnNotes.set('');
+    this.purchaseReturnQuantities.set(
+      Object.fromEntries((order?.items ?? []).map((item) => [item.id, 0])),
+    );
+  }
+
+  private normalizeReturnQuantity(value: number, max: number): number {
+    if (!Number.isFinite(value) || value <= 0) {
+      return 0;
+    }
+
+    return this.roundCurrency(Math.min(value, max));
+  }
+
+  private normalizePaymentAmount(value: number): number {
+    if (!Number.isFinite(value) || value <= 0) {
+      return 0;
+    }
+
+    return this.roundCurrency(value);
+  }
+
+  protected roundCurrency(value: number): number {
+    return Math.round(value * 100) / 100;
   }
 
   private nullableText(value: string | null | undefined): string | null {

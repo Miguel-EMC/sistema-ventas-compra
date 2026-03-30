@@ -46,6 +46,10 @@ import { AuthService } from '../../core/auth/auth.service';
           </div>
         </div>
 
+        @if (legacyNotice()) {
+          <p class="alert alert--info">{{ legacyNotice() }}</p>
+        }
+
         <form class="form-grid" [formGroup]="form" (ngSubmit)="submit()">
           <div class="field">
             <label for="login-user">Correo o usuario</label>
@@ -87,6 +91,7 @@ export class LoginPageComponent {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly error = signal<string | null>(null);
+  protected readonly legacyNotice = signal<string | null>(null);
   protected readonly loading = signal(false);
 
   protected readonly form = this.fb.nonNullable.group({
@@ -95,11 +100,7 @@ export class LoginPageComponent {
   });
 
   public constructor() {
-    void this.auth.boot().then(() => {
-      if (this.auth.isAuthenticated()) {
-        void this.router.navigateByUrl('/dashboard');
-      }
-    });
+    void this.bootstrap();
   }
 
   protected async submit(): Promise<void> {
@@ -133,5 +134,40 @@ export class LoginPageComponent {
     }
 
     return 'No se pudo iniciar sesion.';
+  }
+
+  private async bootstrap(): Promise<void> {
+    this.legacyNotice.set(this.resolveLegacyNotice(this.route.snapshot.queryParamMap.get('legacy')));
+
+    if (this.route.snapshot.queryParamMap.get('logout') === '1') {
+      await this.auth.logout({ redirectTo: null });
+      return;
+    }
+
+    await this.auth.boot();
+
+    if (this.auth.isAuthenticated()) {
+      const redirect = this.route.snapshot.queryParamMap.get('redirect') || '/dashboard';
+      await this.router.navigateByUrl(redirect);
+    }
+  }
+
+  private resolveLegacyNotice(value: string | null): string | null {
+    switch (value) {
+      case 'shell-login':
+        return 'El acceso PHP legacy fue retirado. Este login Angular ya es la entrada principal del sistema.';
+      case 'auth-required':
+        return 'El modulo que intentaste abrir ya fue migrado. Inicia sesion aqui para continuar en la plataforma nueva.';
+      case 'auth-missing-fields':
+        return 'El formulario legacy no envio usuario y password completos. Continua desde este acceso nuevo.';
+      case 'auth-invalid':
+        return 'Las credenciales del acceso legacy no fueron validas. Intenta nuevamente desde este login.';
+      case 'auth-expired':
+        return 'La sesion anterior expiro o el token CSRF legacy ya no era valido. Inicia sesion otra vez desde aqui.';
+      case 'signed-out':
+        return 'La sesion fue cerrada correctamente. Ya puedes volver a ingresar al panel nuevo.';
+      default:
+        return null;
+    }
   }
 }

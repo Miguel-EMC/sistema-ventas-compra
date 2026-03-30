@@ -5,7 +5,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { resolveApiError } from '../../core/http/resolve-api-error';
 import { DashboardApiService } from './dashboard.api';
 import { DashboardLowStockProduct, DashboardSummary } from './dashboard.types';
@@ -43,6 +43,13 @@ import { DashboardLowStockProduct, DashboardSummary } from './dashboard.types';
         <article class="surface surface--muted stack">
           <span class="page-kicker">Operacion</span>
           <strong>{{ error() }}</strong>
+        </article>
+      }
+
+      @if (legacyNotice()) {
+        <article class="surface surface--muted stack">
+          <span class="page-kicker">Migracion</span>
+          <strong>{{ legacyNotice() }}</strong>
         </article>
       }
 
@@ -281,10 +288,12 @@ import { DashboardLowStockProduct, DashboardSummary } from './dashboard.types';
   `,
 })
 export class DashboardPageComponent {
+  private readonly route = inject(ActivatedRoute);
   private readonly dashboardApi = inject(DashboardApiService);
 
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly legacyNotice = signal<string | null>(null);
   protected readonly dashboard = signal<DashboardSummary | null>(null);
 
   private readonly currencyFormatter = new Intl.NumberFormat('es-EC', {
@@ -303,6 +312,7 @@ export class DashboardPageComponent {
   });
 
   public constructor() {
+    this.legacyNotice.set(this.resolveLegacyNotice(this.route.snapshot.queryParamMap.get('legacy')));
     void this.load();
   }
 
@@ -341,5 +351,14 @@ export class DashboardPageComponent {
 
   protected stockGap(product: DashboardLowStockProduct): number {
     return Math.max(product.minimum_stock - product.current_stock, 0);
+  }
+
+  private resolveLegacyNotice(value: string | null): string | null {
+    switch ((value ?? '').trim()) {
+      case 'shell-home':
+        return 'La portada legacy fue retirada. Este dashboard ya es el punto de entrada operativo sobre la API nueva.';
+      default:
+        return null;
+    }
   }
 }

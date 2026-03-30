@@ -24,6 +24,7 @@ class CashSessionResource extends JsonResource
             'sales_total' => (float) ($this->sales_total ?? 0),
             'sales_count' => (int) ($this->sales_count ?? 0),
             'cash_income_total' => (float) ($this->cash_income_total ?? 0),
+            'cash_out_total' => (float) ($this->cash_out_total ?? 0),
             'cash_balance' => round(
                 (float) $this->opening_amount
                 + (float) ($this->cash_income_total ?? 0)

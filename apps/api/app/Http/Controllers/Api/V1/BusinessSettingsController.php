@@ -8,6 +8,7 @@ use App\Http\Requests\Settings\UpdateBusinessSettingsRequest;
 use App\Http\Resources\CompanyProfileResource;
 use App\Http\Resources\CurrencyResource;
 use App\Http\Resources\LocaleResource;
+use App\Http\Resources\TaxResolutionResource;
 use Illuminate\Http\JsonResponse;
 
 class BusinessSettingsController extends Controller
@@ -38,6 +39,10 @@ class BusinessSettingsController extends Controller
             'locale' => $settings['locale'] ? (new LocaleResource($settings['locale']))->resolve() : null,
             'currencies' => CurrencyResource::collection($settings['currencies'])->resolve(),
             'locales' => LocaleResource::collection($settings['locales'])->resolve(),
+            'active_tax_resolution' => $settings['active_tax_resolution']
+                ? (new TaxResolutionResource($settings['active_tax_resolution']))->resolve()
+                : null,
+            'tax_resolutions' => TaxResolutionResource::collection($settings['tax_resolutions'])->resolve(),
             'system_settings' => $settings['system_settings'],
         ];
     }

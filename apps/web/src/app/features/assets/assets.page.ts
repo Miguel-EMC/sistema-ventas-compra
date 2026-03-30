@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { resolveApiError } from '../../core/http/resolve-api-error';
 import { AssetsApiService } from './assets.api';
@@ -21,6 +22,13 @@ import { Asset, AssetCategory, AssetCategoryPayload, AssetPayload } from './asse
         </div>
         <span class="pill">Migracion real del dominio Assets</span>
       </header>
+
+      @if (legacyNotice()) {
+        <article class="surface surface--muted stack">
+          <span class="page-kicker">Migracion</span>
+          <strong>{{ legacyNotice() }}</strong>
+        </article>
+      }
 
       <section class="grid grid--cards">
         <article class="surface metric-card">
@@ -63,6 +71,22 @@ import { Asset, AssetCategory, AssetCategoryPayload, AssetPayload } from './asse
             </div>
 
             <div class="cta-row">
+              <button
+                class="btn btn--ghost"
+                type="button"
+                (click)="downloadCatalogPdf()"
+                [disabled]="downloadingPdf()"
+              >
+                {{ downloadingPdf() ? 'Descargando PDF...' : 'PDF inventario' }}
+              </button>
+              <button
+                class="btn btn--ghost"
+                type="button"
+                (click)="downloadCatalogCsv()"
+                [disabled]="downloadingCsv()"
+              >
+                {{ downloadingCsv() ? 'Descargando CSV...' : 'CSV inventario' }}
+              </button>
               <button class="btn" type="button" (click)="loadAssets()">Refrescar</button>
               @if (isAdmin()) {
                 <button class="btn btn--ghost" type="button" (click)="resetAssetForm()">
@@ -303,17 +327,23 @@ export class AssetsPageComponent {
   private readonly auth = inject(AuthService);
   private readonly api = inject(AssetsApiService);
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
+  private legacyPrefillApplied = false;
+  private legacyAutoExportHandled = false;
 
   protected readonly isAdmin = this.auth.isAdmin;
   protected readonly assets = signal<Asset[]>([]);
   protected readonly categories = signal<AssetCategory[]>([]);
   protected readonly search = signal('');
+  protected readonly downloadingPdf = signal(false);
+  protected readonly downloadingCsv = signal(false);
   protected readonly savingAsset = signal(false);
   protected readonly savingCategory = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly categoryError = signal<string | null>(null);
   protected readonly editingAssetId = signal<number | null>(null);
   protected readonly editingCategoryId = signal<number | null>(null);
+  protected readonly legacyNotice = signal<string | null>(null);
 
   protected readonly totalUnits = computed(() =>
     this.assets().reduce((sum, asset) => sum + asset.quantity, 0),
@@ -356,11 +386,14 @@ export class AssetsPageComponent {
   });
 
   public constructor() {
+    this.legacyNotice.set(this.resolveLegacyNotice(this.route.snapshot.queryParamMap.get('legacy')));
     void this.load();
   }
 
   protected async load(): Promise<void> {
     await Promise.all([this.loadAssets(), this.loadCategories()]);
+    this.applyLegacyPrefillFromQuery();
+    await this.runLegacyAutoExport();
   }
 
   protected async loadAssets(): Promise<void> {
@@ -525,6 +558,34 @@ export class AssetsPageComponent {
     }
   }
 
+  protected async downloadCatalogPdf(): Promise<void> {
+    this.downloadingPdf.set(true);
+    this.error.set(null);
+
+    try {
+      const pdf = await this.api.downloadCatalogPdf(this.search());
+      this.triggerFileDownload(pdf, this.buildCatalogFileName('catalogo-activos', 'pdf'));
+    } catch (error) {
+      this.error.set(resolveApiError(error));
+    } finally {
+      this.downloadingPdf.set(false);
+    }
+  }
+
+  protected async downloadCatalogCsv(): Promise<void> {
+    this.downloadingCsv.set(true);
+    this.error.set(null);
+
+    try {
+      const csv = await this.api.downloadCatalogCsv(this.search());
+      this.triggerFileDownload(csv, this.buildCatalogFileName('catalogo-activos', 'csv'));
+    } catch (error) {
+      this.error.set(resolveApiError(error));
+    } finally {
+      this.downloadingCsv.set(false);
+    }
+  }
+
   protected labelForStatus(status: string): string {
     return this.assetStatuses.find((item) => item.value === status)?.label ?? status;
   }
@@ -565,5 +626,96 @@ export class AssetsPageComponent {
     const normalized = value?.trim() ?? '';
 
     return normalized === '' ? null : normalized;
+  }
+
+  private applyLegacyPrefillFromQuery(): void {
+    if (this.legacyPrefillApplied || !this.isAdmin()) {
+      this.legacyPrefillApplied = true;
+      return;
+    }
+
+    this.legacyPrefillApplied = true;
+
+    const query = this.route.snapshot.queryParamMap;
+    const name = this.nullableText(query.get('name'));
+    const code = this.nullableText(query.get('code'));
+    const quantity = this.normalizeNumber(query.get('quantity'));
+    const acquiredAt = this.nullableText(query.get('acquired_at'));
+
+    if (name === null && code === null && quantity === null && acquiredAt === null) {
+      return;
+    }
+
+    this.resetAssetForm();
+    this.assetForm.patchValue({
+      name: name ?? '',
+      code: code ?? '',
+      quantity: quantity ?? 1,
+      acquired_at: acquiredAt ?? '',
+    });
+  }
+
+  private async runLegacyAutoExport(): Promise<void> {
+    if (this.legacyAutoExportHandled) {
+      return;
+    }
+
+    this.legacyAutoExportHandled = true;
+
+    switch ((this.route.snapshot.queryParamMap.get('auto_export') ?? '').trim()) {
+      case 'pdf':
+        await this.downloadCatalogPdf();
+        break;
+      case 'csv':
+        await this.downloadCatalogCsv();
+        break;
+      default:
+        break;
+    }
+  }
+
+  private normalizeNumber(value: string | null): number | null {
+    if (value === null) {
+      return null;
+    }
+
+    const normalized = Number(value);
+
+    return Number.isFinite(normalized) ? normalized : null;
+  }
+
+  private triggerFileDownload(blob: Blob, fileName: string): void {
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(objectUrl);
+  }
+
+  private buildCatalogFileName(baseName: string, extension: 'pdf' | 'csv'): string {
+    const search = this.search().trim();
+    const suffix = search === '' ? '' : `-${this.safeFileNameSegment(search)}`;
+
+    return `${baseName}${suffix}.${extension}`;
+  }
+
+  private safeFileNameSegment(value: string): string {
+    const normalized = value.trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-_.]+|[-_.]+$/g, '');
+
+    return normalized === '' ? 'inventario' : normalized;
+  }
+
+  private resolveLegacyNotice(value: string | null): string | null {
+    switch ((value ?? '').trim()) {
+      case 'asset-form-write':
+        return 'El formulario legacy de activos fue retirado. Revisa los datos precargados y confirma el registro desde este modulo.';
+      case 'asset-form-delete':
+        return 'La eliminacion legacy de activos fue retirada. Usa este modulo para depurar o corregir la base nueva.';
+      case 'inventory-report':
+        return 'El reporte legacy de inventario ahora se descarga desde este modulo nuevo. Ya no depende del PDF antiguo del root PHP.';
+      default:
+        return null;
+    }
   }
 }

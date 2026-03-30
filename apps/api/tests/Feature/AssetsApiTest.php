@@ -89,4 +89,43 @@ class AssetsApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.name', 'Laptop demo');
     }
+
+    public function test_authenticated_users_can_download_asset_catalog_reports(): void
+    {
+        $this->seed(CoreReferenceSeeder::class);
+
+        /** @var User $admin */
+        $admin = User::query()->where('username', 'admin')->firstOrFail();
+        $category = AssetCategory::query()->firstOrFail();
+
+        Asset::query()->create([
+            'public_id' => 'asset-export',
+            'name' => 'Laptop contable',
+            'code' => 'LP-77',
+            'category_id' => $category->id,
+            'quantity' => 1,
+            'acquisition_cost' => 850,
+            'acquired_at' => '2026-03-10',
+            'status' => 'active',
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $pdfResponse = $this->get('/api/v1/reports/catalog/assets/pdf?search=Laptop')
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+
+        $this->assertStringStartsWith('%PDF', (string) $pdfResponse->getContent());
+        $this->assertStringContainsString(
+            'catalogo-activos-Laptop.pdf',
+            (string) $pdfResponse->headers->get('content-disposition'),
+        );
+
+        $csvResponse = $this->get('/api/v1/reports/catalog/assets/csv?search=Laptop')
+            ->assertOk()
+            ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+
+        $this->assertStringContainsString('Activo,Codigo,Categoria', (string) $csvResponse->getContent());
+        $this->assertStringContainsString('Laptop contable', (string) $csvResponse->getContent());
+    }
 }

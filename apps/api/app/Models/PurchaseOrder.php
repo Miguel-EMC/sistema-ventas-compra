@@ -19,15 +19,18 @@ class PurchaseOrder extends Model
         'supplier_id',
         'user_id',
         'received_by_id',
+        'cancelled_by_id',
         'status',
         'reference',
         'subtotal',
         'tax_total',
         'grand_total',
         'notes',
+        'cancellation_reason',
         'metadata',
         'ordered_at',
         'received_at',
+        'cancelled_at',
     ];
 
     protected function casts(): array
@@ -39,6 +42,7 @@ class PurchaseOrder extends Model
             'metadata' => 'array',
             'ordered_at' => 'datetime',
             'received_at' => 'datetime',
+            'cancelled_at' => 'datetime',
         ];
     }
 
@@ -57,8 +61,25 @@ class PurchaseOrder extends Model
         return $this->belongsTo(User::class, 'received_by_id');
     }
 
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by_id');
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(PurchaseReturn::class)->orderByDesc('returned_at');
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(PurchaseOrderPayment::class)
+            ->orderByDesc('paid_at')
+            ->orderByDesc('id');
     }
 }

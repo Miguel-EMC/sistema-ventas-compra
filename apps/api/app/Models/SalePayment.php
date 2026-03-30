@@ -14,11 +14,16 @@ class SalePayment extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'public_id',
         'sale_id',
+        'cash_session_id',
+        'user_id',
         'method',
         'amount',
         'reference',
+        'notes',
         'paid_at',
+        'metadata',
     ];
 
     protected function casts(): array
@@ -26,11 +31,22 @@ class SalePayment extends Model
         return [
             'amount' => 'decimal:2',
             'paid_at' => 'datetime',
+            'metadata' => 'array',
         ];
     }
 
     public function sale(): BelongsTo
     {
         return $this->belongsTo(Sale::class);
+    }
+
+    public function cashSession(): BelongsTo
+    {
+        return $this->belongsTo(CashSession::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

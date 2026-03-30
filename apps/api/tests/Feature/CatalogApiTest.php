@@ -131,4 +131,47 @@ class CatalogApiTest extends TestCase
             'minimum_stock' => 0,
         ])->assertForbidden();
     }
+
+    public function test_authenticated_users_can_download_product_catalog_reports(): void
+    {
+        $this->seed(CoreReferenceSeeder::class);
+
+        /** @var User $admin */
+        $admin = User::query()->where('username', 'admin')->firstOrFail();
+        $category = ProductCategory::query()->firstOrFail();
+
+        Product::query()->create([
+            'public_id' => 'product-export',
+            'name' => 'Te verde',
+            'sku' => 'TE-001',
+            'barcode' => '7790099',
+            'category_id' => $category->id,
+            'sale_price' => 3.20,
+            'cost_price' => 1.50,
+            'tax_rate' => 0,
+            'unit' => 'caja',
+            'track_stock' => true,
+            'minimum_stock' => 2,
+            'is_active' => true,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $pdfResponse = $this->get('/api/v1/reports/catalog/products/pdf?search=Te')
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+
+        $this->assertStringStartsWith('%PDF', (string) $pdfResponse->getContent());
+        $this->assertStringContainsString(
+            'catalogo-productos-Te.pdf',
+            (string) $pdfResponse->headers->get('content-disposition'),
+        );
+
+        $csvResponse = $this->get('/api/v1/reports/catalog/products/csv?search=Te')
+            ->assertOk()
+            ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+
+        $this->assertStringContainsString('Producto,SKU,"Codigo de barras"', (string) $csvResponse->getContent());
+        $this->assertStringContainsString('Te verde', (string) $csvResponse->getContent());
+    }
 }

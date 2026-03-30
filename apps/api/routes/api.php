@@ -3,25 +3,45 @@
 use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\AuthenticatedUserController;
+use App\Http\Controllers\Api\V1\Auth\LegacyBridgeLoginController;
 use App\Http\Controllers\Api\V1\AssetCategoryController;
 use App\Http\Controllers\Api\V1\AssetController;
 use App\Http\Controllers\Api\V1\BusinessSettingsController;
 use App\Http\Controllers\Api\V1\CashRegisterController;
+use App\Http\Controllers\Api\V1\CashMovementController;
 use App\Http\Controllers\Api\V1\CashSessionController;
+use App\Http\Controllers\Api\V1\CancelPurchaseOrderController;
+use App\Http\Controllers\Api\V1\CancelSaleController;
 use App\Http\Controllers\Api\V1\CloseCashSessionController;
 use App\Http\Controllers\Api\V1\CurrentSaleDraftController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\DashboardSummaryController;
+use App\Http\Controllers\Api\V1\DownloadAssetCatalogCsvController;
+use App\Http\Controllers\Api\V1\DownloadAssetCatalogPdfController;
+use App\Http\Controllers\Api\V1\DownloadCreditNotePdfController;
+use App\Http\Controllers\Api\V1\DownloadInvoicePdfController;
+use App\Http\Controllers\Api\V1\DownloadProductCatalogCsvController;
+use App\Http\Controllers\Api\V1\DownloadProductCatalogPdfController;
+use App\Http\Controllers\Api\V1\DownloadProductSalesCsvController;
+use App\Http\Controllers\Api\V1\DownloadProfitabilityPdfController;
+use App\Http\Controllers\Api\V1\DownloadReceivablesPdfController;
+use App\Http\Controllers\Api\V1\DownloadSalesReportCsvController;
+use App\Http\Controllers\Api\V1\DownloadSalesReportPdfController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\IssueCreditNoteController;
 use App\Http\Controllers\Api\V1\ProductCategoryController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProductStockAdjustmentController;
 use App\Http\Controllers\Api\V1\PurchaseOrderController;
+use App\Http\Controllers\Api\V1\PurchaseOrderPaymentController;
+use App\Http\Controllers\Api\V1\PurchaseReturnController;
 use App\Http\Controllers\Api\V1\ReceivePurchaseOrderController;
 use App\Http\Controllers\Api\V1\ReportOverviewController;
 use App\Http\Controllers\Api\V1\SaleController;
 use App\Http\Controllers\Api\V1\SaleDraftItemController;
+use App\Http\Controllers\Api\V1\SalePaymentController;
+use App\Http\Controllers\Api\V1\SaleReturnController;
 use App\Http\Controllers\Api\V1\SupplierController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +51,7 @@ Route::prefix('v1')->group(function (): void {
 
     Route::prefix('auth')->group(function (): void {
         Route::post('/login', LoginController::class)->name('api.v1.auth.login');
+        Route::post('/legacy-bridge', LegacyBridgeLoginController::class)->name('api.v1.auth.legacy-bridge');
         Route::get('/me', AuthenticatedUserController::class)
             ->middleware('auth:sanctum')
             ->name('api.v1.auth.me');
@@ -51,15 +72,41 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('assets', AssetController::class)->only(['index', 'show']);
         Route::get('/dashboard/summary', DashboardSummaryController::class)->name('dashboard.summary');
         Route::get('/cash/registers', [CashRegisterController::class, 'index'])->name('cash.registers.index');
+        Route::get('/cash/movements', [CashMovementController::class, 'index'])->name('cash.movements.index');
+        Route::post('/cash/movements', [CashMovementController::class, 'store'])->name('cash.movements.store');
+        Route::patch('/cash/movements/{cashMovement}', [CashMovementController::class, 'update'])->name('cash.movements.update');
+        Route::delete('/cash/movements/{cashMovement}', [CashMovementController::class, 'destroy'])->name('cash.movements.destroy');
         Route::get('/cash/sessions', [CashSessionController::class, 'index'])->name('cash.sessions.index');
         Route::post('/cash/sessions', [CashSessionController::class, 'store'])->name('cash.sessions.store');
         Route::get('/cash/sessions/current', [CashSessionController::class, 'current'])->name('cash.sessions.current');
         Route::post('/cash/sessions/{cashSession}/close', CloseCashSessionController::class)
             ->name('cash.sessions.close');
         Route::apiResource('customers', CustomerController::class)->only(['index', 'show']);
+        Route::get('/credit-notes/{creditNote}/pdf', DownloadCreditNotePdfController::class)
+            ->name('credit-notes.pdf');
+        Route::get('/invoices/{invoice}/pdf', DownloadInvoicePdfController::class)
+            ->name('invoices.pdf');
         Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->name('purchase-orders.index');
         Route::get('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])->name('purchase-orders.show');
         Route::get('/reports/overview', ReportOverviewController::class)->name('reports.overview');
+        Route::get('/reports/catalog/assets/csv', DownloadAssetCatalogCsvController::class)
+            ->name('reports.catalog.assets.csv');
+        Route::get('/reports/catalog/assets/pdf', DownloadAssetCatalogPdfController::class)
+            ->name('reports.catalog.assets.pdf');
+        Route::get('/reports/catalog/products/csv', DownloadProductCatalogCsvController::class)
+            ->name('reports.catalog.products.csv');
+        Route::get('/reports/catalog/products/pdf', DownloadProductCatalogPdfController::class)
+            ->name('reports.catalog.products.pdf');
+        Route::get('/reports/profitability/pdf', DownloadProfitabilityPdfController::class)
+            ->name('reports.profitability.pdf');
+        Route::get('/reports/receivables/pdf', DownloadReceivablesPdfController::class)
+            ->name('reports.receivables.pdf');
+        Route::get('/reports/sales/csv', DownloadSalesReportCsvController::class)
+            ->name('reports.sales.csv');
+        Route::get('/reports/sales/pdf', DownloadSalesReportPdfController::class)
+            ->name('reports.sales.pdf');
+        Route::get('/reports/products/csv', DownloadProductSalesCsvController::class)
+            ->name('reports.products.csv');
         Route::get('/settings/business', [BusinessSettingsController::class, 'show'])->name('settings.business.show');
         Route::get('/sales/draft', [CurrentSaleDraftController::class, 'show'])->name('sales.draft.show');
         Route::patch('/sales/draft', [CurrentSaleDraftController::class, 'update'])->name('sales.draft.update');
@@ -69,7 +116,10 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/sales/draft/items/{saleDraftItem}', [SaleDraftItemController::class, 'destroy'])
             ->name('sales.draft-items.destroy');
         Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
+        Route::get('/sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
         Route::post('/sales', [SaleController::class, 'store'])->name('sales.store');
+        Route::post('/sales/{sale}/payments', SalePaymentController::class)->name('sales.payments.store');
+        Route::post('/sales/{sale}/returns', SaleReturnController::class)->name('sales.returns.store');
         Route::apiResource('suppliers', SupplierController::class)->only(['index', 'show']);
     });
 
@@ -81,11 +131,20 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/purchase-orders', [PurchaseOrderController::class, 'store'])->name('purchase-orders.store');
         Route::patch('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'update'])->name('purchase-orders.update');
         Route::delete('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy'])->name('purchase-orders.destroy');
+        Route::post('/purchase-orders/{purchaseOrder}/cancel', CancelPurchaseOrderController::class)
+            ->name('purchase-orders.cancel');
+        Route::post('/purchase-orders/{purchaseOrder}/payments', PurchaseOrderPaymentController::class)
+            ->name('purchase-orders.payments.store');
+        Route::post('/purchase-orders/{purchaseOrder}/returns', PurchaseReturnController::class)
+            ->name('purchase-orders.returns.store');
         Route::post('/purchase-orders/{purchaseOrder}/receive', ReceivePurchaseOrderController::class)
             ->name('purchase-orders.receive');
         Route::apiResource('asset-categories', AssetCategoryController::class)->only(['store', 'update', 'destroy']);
         Route::apiResource('assets', AssetController::class)->only(['store', 'update', 'destroy']);
         Route::apiResource('customers', CustomerController::class)->only(['store', 'update', 'destroy']);
+        Route::post('/sales/{sale}/cancel', CancelSaleController::class)->name('sales.cancel');
+        Route::post('/sale-returns/{saleReturn}/credit-note', IssueCreditNoteController::class)
+            ->name('sale-returns.credit-note.store');
         Route::put('/settings/business', [BusinessSettingsController::class, 'update'])->name('settings.business.update');
         Route::apiResource('suppliers', SupplierController::class)->only(['store', 'update', 'destroy']);
     });

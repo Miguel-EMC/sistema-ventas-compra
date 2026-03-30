@@ -12,6 +12,12 @@ export const routes: Routes = [
     canActivate: [guestGuard],
   },
   {
+    path: 'auth/bridge',
+    loadComponent: () =>
+      import('./features/auth/legacy-bridge.page').then((m) => m.LegacyBridgePageComponent),
+    title: 'Migrando sesion | VentasPOS',
+  },
+  {
     path: '',
     loadComponent: () =>
       import('./core/layout/app-shell.component').then((m) => m.AppShellComponent),

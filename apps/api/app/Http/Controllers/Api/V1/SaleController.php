@@ -6,6 +6,7 @@ use App\Application\Services\Sales\SaleWorkflowService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sales\CheckoutSaleRequest;
 use App\Http\Resources\SaleResource;
+use App\Models\Sale;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,5 +25,10 @@ class SaleController extends Controller
         return SaleResource::make(
             $service->checkout($request->user(), $request->validated()),
         )->response()->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    public function show(Sale $sale, SaleWorkflowService $service): SaleResource
+    {
+        return SaleResource::make($service->showSale($sale));
     }
 }

@@ -9,10 +9,15 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { ActivatedRoute } from '@angular/router';
 import { resolveApiError } from '../../core/http/resolve-api-error';
 import { AuthService } from '../../core/auth/auth.service';
+import {
+  BusinessSettings,
+  TaxResolution,
+  UpdateBusinessSettingsPayload,
+} from './settings.types';
 import { SettingsApiService } from './settings.api';
-import { BusinessSettings, UpdateBusinessSettingsPayload } from './settings.types';
 
 @Component({
   selector: 'app-settings-page',
@@ -33,10 +38,10 @@ import { BusinessSettings, UpdateBusinessSettingsPayload } from './settings.type
       <header class="page-header">
         <div class="page-header__copy">
           <span class="page-kicker">Configuracion</span>
-          <h1 class="page-title">Empresa, moneda e idioma ya viven en el stack nuevo.</h1>
+          <h1 class="page-title">Empresa, defaults y dosificacion ya viven en el stack nuevo.</h1>
           <p class="page-description">
-            Este modulo reemplaza el placeholder y centraliza perfil comercial, defaults operativos
-            y parametros globales del negocio.
+            Este modulo ahora centraliza perfil comercial, parametros operativos y la resolucion
+            fiscal activa para emitir facturas reales desde el POS nuevo.
           </p>
         </div>
         <span class="pill">
@@ -63,6 +68,13 @@ import { BusinessSettings, UpdateBusinessSettingsPayload } from './settings.type
         <article class="surface stack settings-success">
           <span class="page-kicker">Configuracion</span>
           <strong>{{ successMessage() }}</strong>
+        </article>
+      }
+
+      @if (legacyNotice()) {
+        <article class="surface surface--muted stack">
+          <span class="page-kicker">Migracion</span>
+          <strong>{{ legacyNotice() }}</strong>
         </article>
       }
 
@@ -101,6 +113,21 @@ import { BusinessSettings, UpdateBusinessSettingsPayload } from './settings.type
             </strong>
             <span class="metric-card__hint">Valor inicial para el checkout del POS nuevo.</span>
           </article>
+
+          <article class="surface metric-card">
+            <span class="metric-card__label">Dosificacion activa</span>
+            <strong class="metric-card__value settings-metric__value">
+              {{ settings.active_tax_resolution?.series || 'Sin serie activa' }}
+            </strong>
+            <span class="metric-card__hint">
+              @if (settings.active_tax_resolution) {
+                {{ settings.active_tax_resolution.authorization_number }} · siguiente
+                {{ settings.active_tax_resolution.next_invoice_number }}
+              } @else {
+                No hay resolucion habilitada para facturas.
+              }
+            </span>
+          </article>
         </section>
 
         @if (!auth.isAdmin()) {
@@ -113,8 +140,15 @@ import { BusinessSettings, UpdateBusinessSettingsPayload } from './settings.type
           </article>
         }
 
+        @if (!settings.active_tax_resolution) {
+          <article class="surface surface--muted stack settings-warning">
+            <span class="page-kicker">Facturacion</span>
+            <strong>No hay una dosificacion activa. El POS bloqueara facturas hasta configurarla.</strong>
+          </article>
+        }
+
         <section class="settings-layout" [formGroup]="form">
-          <mat-card appearance="outlined" class="settings-card">
+          <mat-card appearance="outlined" class="settings-card settings-card--wide">
             <mat-card-header>
               <mat-card-title>Perfil de empresa</mat-card-title>
               <mat-card-subtitle>Datos fiscales y comerciales principales.</mat-card-subtitle>
@@ -177,6 +211,20 @@ import { BusinessSettings, UpdateBusinessSettingsPayload } from './settings.type
                   <mat-form-field appearance="outline">
                     <mat-label>Region / Provincia</mat-label>
                     <input matInput type="text" formControlName="region" />
+                  </mat-form-field>
+                </div>
+
+                <mat-divider></mat-divider>
+
+                <div class="settings-grid settings-grid--double">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Propietario en factura</mat-label>
+                    <input matInput type="text" formControlName="billing_owner_name" />
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Numero / referencia</mat-label>
+                    <input matInput type="text" formControlName="billing_address_reference" />
                   </mat-form-field>
                 </div>
               </div>
@@ -251,6 +299,134 @@ import { BusinessSettings, UpdateBusinessSettingsPayload } from './settings.type
                 <mat-chip>{{ settings.locale?.code || form.getRawValue().locale_code }}</mat-chip>
                 <mat-chip>{{ labelForDocument(form.getRawValue().default_document_type || 'ticket') }}</mat-chip>
               </mat-chip-set>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card appearance="outlined" class="settings-card settings-card--billing">
+            <mat-card-header>
+              <mat-card-title>Facturacion y dosificacion</mat-card-title>
+              <mat-card-subtitle>
+                La venta con factura ya depende de una resolucion activa y trazable.
+              </mat-card-subtitle>
+            </mat-card-header>
+
+            <mat-card-content class="stack">
+              <div class="settings-inline-actions">
+                @if (auth.isAdmin()) {
+                  <button mat-stroked-button type="button" (click)="startNewTaxResolution()">
+                    Nueva dosificacion
+                  </button>
+                  <button mat-stroked-button type="button" (click)="clearTaxResolutionSelection()">
+                    Dejar sin activa
+                  </button>
+                }
+              </div>
+
+              <div class="settings-grid settings-grid--triple">
+                <mat-form-field appearance="outline">
+                  <mat-label>Nombre interno</mat-label>
+                  <input matInput type="text" formControlName="tax_resolution_name" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Nro. autorizacion</mat-label>
+                  <input matInput type="text" formControlName="tax_authorization_number" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Serie</mat-label>
+                  <input matInput type="text" formControlName="tax_series" />
+                </mat-form-field>
+              </div>
+
+              <div class="settings-grid settings-grid--triple">
+                <mat-form-field appearance="outline">
+                  <mat-label>Inicio numeracion</mat-label>
+                  <input matInput type="number" min="1" formControlName="invoice_number_start" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Fin numeracion</mat-label>
+                  <input matInput type="number" min="1" formControlName="invoice_number_end" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Siguiente numero</mat-label>
+                  <input matInput type="number" min="1" formControlName="next_invoice_number" />
+                </mat-form-field>
+              </div>
+
+              <div class="settings-grid settings-grid--double">
+                <mat-form-field appearance="outline">
+                  <mat-label>Inicio vigencia</mat-label>
+                  <input matInput type="datetime-local" formControlName="tax_starts_at" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Fin vigencia</mat-label>
+                  <input matInput type="datetime-local" formControlName="tax_ends_at" />
+                </mat-form-field>
+              </div>
+
+              <div class="settings-grid settings-grid--double">
+                <mat-form-field appearance="outline">
+                  <mat-label>Llave tecnica</mat-label>
+                  <input matInput type="text" formControlName="tax_technical_key" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Leyenda fiscal</mat-label>
+                  <textarea matInput rows="3" formControlName="tax_legend"></textarea>
+                </mat-form-field>
+              </div>
+
+              <mat-chip-set>
+                <mat-chip>
+                  Siguiente {{ formatTaxSequence(form.getRawValue().next_invoice_number) }}
+                </mat-chip>
+                <mat-chip>Restantes {{ remainingTaxNumbers() }}</mat-chip>
+                @if (form.getRawValue().tax_series) {
+                  <mat-chip>{{ form.getRawValue().tax_series }}</mat-chip>
+                }
+              </mat-chip-set>
+
+              @if (settings.tax_resolutions.length > 0) {
+                <mat-divider></mat-divider>
+
+                <div class="resolution-history">
+                  <div class="resolution-history__header">
+                    <span class="page-kicker">Historial</span>
+                    <strong>{{ settings.tax_resolutions.length }} resolucion(es) registradas</strong>
+                  </div>
+
+                  <div class="resolution-history__list">
+                    @for (resolution of settings.tax_resolutions; track resolution.id) {
+                      <article class="resolution-history__item">
+                        <div class="resolution-history__copy">
+                          <strong>{{ resolution.name }}</strong>
+                          <span>
+                            {{ resolution.authorization_number }}
+                            @if (resolution.series) {
+                              · {{ resolution.series }}
+                            }
+                          </span>
+                          <small>
+                            Siguiente {{ formatTaxSequence(resolution.next_invoice_number) }} ·
+                            Restantes {{ resolution.remaining_invoices }} ·
+                            {{ resolution.is_active ? 'Activa' : 'Historica' }}
+                          </small>
+                        </div>
+
+                        @if (auth.isAdmin()) {
+                          <button mat-stroked-button type="button" (click)="loadTaxResolution(resolution)">
+                            Cargar
+                          </button>
+                        }
+                      </article>
+                    }
+                  </div>
+                </div>
+              }
 
               <div class="cta-row">
                 <button mat-stroked-button type="button" (click)="load()" [disabled]="loading()">
@@ -276,7 +452,7 @@ import { BusinessSettings, UpdateBusinessSettingsPayload } from './settings.type
     .settings-layout {
       display: grid;
       gap: 1rem;
-      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
     }
 
     .settings-card {
@@ -284,12 +460,22 @@ import { BusinessSettings, UpdateBusinessSettingsPayload } from './settings.type
       height: 100%;
     }
 
+    .settings-card--wide {
+      min-width: 0;
+    }
+
+    .settings-card--billing {
+      grid-column: 1 / -1;
+    }
+
     .settings-card mat-card-content:first-of-type {
       margin-top: 1rem;
     }
 
     .settings-form,
-    .settings-toggle-grid {
+    .settings-toggle-grid,
+    .resolution-history,
+    .resolution-history__list {
       display: grid;
       gap: 1rem;
     }
@@ -308,14 +494,52 @@ import { BusinessSettings, UpdateBusinessSettingsPayload } from './settings.type
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
+    .settings-inline-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
     .settings-success {
       border-color: rgba(19, 128, 77, 0.18);
       background: rgba(19, 128, 77, 0.08);
     }
 
+    .settings-warning {
+      border-color: rgba(180, 83, 9, 0.18);
+      background: rgba(180, 83, 9, 0.08);
+    }
+
     .settings-metric__value {
       font-size: 1.35rem;
       line-height: 1.25;
+    }
+
+    .resolution-history__header {
+      display: grid;
+      gap: 0.2rem;
+    }
+
+    .resolution-history__item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      background: rgba(15, 76, 129, 0.03);
+      padding: 1rem;
+    }
+
+    .resolution-history__copy {
+      display: grid;
+      gap: 0.25rem;
+      min-width: 0;
+    }
+
+    .resolution-history__copy span,
+    .resolution-history__copy small {
+      color: var(--text-muted);
     }
 
     @media (max-width: 1100px) {
@@ -326,18 +550,27 @@ import { BusinessSettings, UpdateBusinessSettingsPayload } from './settings.type
         grid-template-columns: 1fr;
       }
     }
+
+    @media (max-width: 720px) {
+      .resolution-history__item {
+        align-items: start;
+        flex-direction: column;
+      }
+    }
   `,
 })
 export class SettingsPageComponent {
   protected readonly auth = inject(AuthService);
 
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
   private readonly settingsApi = inject(SettingsApiService);
 
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly successMessage = signal<string | null>(null);
+  protected readonly legacyNotice = signal<string | null>(null);
   protected readonly settings = signal<BusinessSettings | null>(null);
 
   protected readonly documentTypes = [
@@ -356,6 +589,8 @@ export class SettingsPageComponent {
     address_line: [''],
     city: [''],
     region: [''],
+    billing_owner_name: [''],
+    billing_address_reference: [''],
     country_code: ['EC'],
     currency_code: ['USD', [Validators.required]],
     locale_code: ['es-EC', [Validators.required]],
@@ -364,9 +599,26 @@ export class SettingsPageComponent {
     allow_negative_stock: [false, [Validators.required]],
     default_document_type: ['ticket', [Validators.required]],
     invoice_footer: [''],
+    tax_resolution_id: [''],
+    tax_resolution_name: [''],
+    tax_authorization_number: [''],
+    tax_series: [''],
+    invoice_number_start: [1],
+    invoice_number_end: [99999999],
+    next_invoice_number: [1],
+    tax_starts_at: [''],
+    tax_ends_at: [''],
+    tax_technical_key: [''],
+    tax_legend: [''],
+  });
+
+  private readonly dateTimeFormatter = new Intl.DateTimeFormat('es-EC', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
   });
 
   public constructor() {
+    this.legacyNotice.set(this.resolveLegacyNotice(this.route.snapshot.queryParamMap.get('legacy')));
     void this.load();
   }
 
@@ -404,7 +656,9 @@ export class SettingsPageComponent {
     try {
       const settings = await this.settingsApi.updateBusinessSettings(this.buildPayload());
       this.settings.set(settings);
-      this.successMessage.set('La configuracion del negocio fue actualizada en la API nueva.');
+      this.successMessage.set(
+        'La configuracion del negocio y la dosificacion activa fueron actualizadas en la API nueva.',
+      );
       this.applySettingsToForm(settings);
       this.syncFormAccess();
     } catch (error) {
@@ -418,6 +672,92 @@ export class SettingsPageComponent {
     return this.documentTypes.find((option) => option.value === value)?.label ?? value;
   }
 
+  protected loadTaxResolution(resolution: TaxResolution): void {
+    this.form.patchValue({
+      tax_resolution_id: String(resolution.id),
+      tax_resolution_name: resolution.name,
+      tax_authorization_number: resolution.authorization_number,
+      tax_series: resolution.series ?? '',
+      invoice_number_start: resolution.invoice_number_start,
+      invoice_number_end: resolution.invoice_number_end,
+      next_invoice_number: resolution.next_invoice_number,
+      tax_starts_at: this.toDateTimeLocalValue(resolution.starts_at),
+      tax_ends_at: this.toDateTimeLocalValue(resolution.ends_at),
+      tax_technical_key: resolution.technical_key ?? '',
+      tax_legend: resolution.legend ?? '',
+    });
+  }
+
+  protected startNewTaxResolution(): void {
+    if (!this.auth.isAdmin()) {
+      return;
+    }
+
+    this.form.patchValue({
+      tax_resolution_id: '',
+      tax_resolution_name: '',
+      tax_authorization_number: '',
+      tax_series: '',
+      invoice_number_start: 1,
+      invoice_number_end: 99999999,
+      next_invoice_number: 1,
+      tax_starts_at: this.toDateTimeLocalValue(new Date().toISOString()),
+      tax_ends_at: '',
+      tax_technical_key: '',
+      tax_legend: '',
+    });
+  }
+
+  protected clearTaxResolutionSelection(): void {
+    if (!this.auth.isAdmin()) {
+      return;
+    }
+
+    this.form.patchValue({
+      tax_resolution_id: '',
+      tax_resolution_name: '',
+      tax_authorization_number: '',
+      tax_series: '',
+      invoice_number_start: 1,
+      invoice_number_end: 1,
+      next_invoice_number: 1,
+      tax_starts_at: '',
+      tax_ends_at: '',
+      tax_technical_key: '',
+      tax_legend: '',
+    });
+  }
+
+  protected remainingTaxNumbers(): number {
+    const raw = this.form.getRawValue();
+    const end = Number(raw.invoice_number_end ?? 0);
+    const next = Number(raw.next_invoice_number ?? 0);
+
+    if (!Number.isFinite(end) || !Number.isFinite(next)) {
+      return 0;
+    }
+
+    return Math.max(0, end - next + 1);
+  }
+
+  protected formatTaxSequence(value: number | string | null | undefined): string {
+    const numeric = Number(value ?? 0);
+
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+      return '00000000';
+    }
+
+    return String(Math.trunc(numeric)).padStart(8, '0');
+  }
+
+  protected formatDateTime(value: string | null): string {
+    if (!value) {
+      return 'Sin fecha';
+    }
+
+    return this.dateTimeFormatter.format(new Date(value));
+  }
+
   private applySettingsToForm(settings: BusinessSettings): void {
     this.form.patchValue({
       legal_name: settings.company_profile.legal_name,
@@ -429,6 +769,8 @@ export class SettingsPageComponent {
       address_line: settings.company_profile.address_line ?? '',
       city: settings.company_profile.city ?? '',
       region: settings.company_profile.region ?? '',
+      billing_owner_name: settings.company_profile.metadata?.billing_owner_name ?? '',
+      billing_address_reference: settings.company_profile.metadata?.billing_address_reference ?? '',
       country_code: settings.company_profile.country_code ?? 'EC',
       currency_code: settings.system_settings.currency_code,
       locale_code: settings.system_settings.locale_code,
@@ -438,10 +780,31 @@ export class SettingsPageComponent {
       default_document_type: settings.system_settings.default_document_type,
       invoice_footer: settings.system_settings.invoice_footer ?? '',
     });
+
+    if (settings.active_tax_resolution) {
+      this.loadTaxResolution(settings.active_tax_resolution);
+      return;
+    }
+
+    this.clearTaxResolutionSelection();
   }
 
   private buildPayload(): UpdateBusinessSettingsPayload {
     const raw = this.form.getRawValue();
+    const hasTaxResolutionDraft = [
+      raw.tax_resolution_name,
+      raw.tax_authorization_number,
+      raw.tax_series,
+      raw.tax_starts_at,
+      raw.tax_ends_at,
+      raw.tax_technical_key,
+      raw.tax_legend,
+    ].some((value) => this.nullableText(value) !== null);
+
+    const numericResolutionData =
+      Number(raw.invoice_number_start ?? 0) > 1 ||
+      Number(raw.invoice_number_end ?? 0) > 1 ||
+      Number(raw.next_invoice_number ?? 0) > 1;
 
     return {
       company_profile: {
@@ -455,6 +818,10 @@ export class SettingsPageComponent {
         city: this.nullableText(raw.city),
         region: this.nullableText(raw.region),
         country_code: this.nullableCountry(raw.country_code),
+        metadata: {
+          billing_owner_name: this.nullableText(raw.billing_owner_name),
+          billing_address_reference: this.nullableText(raw.billing_address_reference),
+        },
       },
       system_settings: {
         currency_code: raw.currency_code?.trim() || 'USD',
@@ -465,6 +832,22 @@ export class SettingsPageComponent {
         default_document_type: (raw.default_document_type || 'ticket') as 'ticket' | 'factura' | 'nota',
         invoice_footer: this.nullableText(raw.invoice_footer),
       },
+      active_tax_resolution:
+        hasTaxResolutionDraft || numericResolutionData
+          ? {
+              ...(raw.tax_resolution_id ? { id: Number(raw.tax_resolution_id) } : {}),
+              name: raw.tax_resolution_name?.trim() ?? '',
+              authorization_number: raw.tax_authorization_number?.trim() ?? '',
+              series: this.nullableText(raw.tax_series),
+              invoice_number_start: Number(raw.invoice_number_start ?? 1),
+              invoice_number_end: Number(raw.invoice_number_end ?? 1),
+              next_invoice_number: Number(raw.next_invoice_number ?? 1),
+              starts_at: raw.tax_starts_at?.trim() ?? '',
+              ends_at: this.nullableText(raw.tax_ends_at),
+              technical_key: this.nullableText(raw.tax_technical_key),
+              legend: this.nullableText(raw.tax_legend),
+            }
+          : null,
     };
   }
 
@@ -477,8 +860,8 @@ export class SettingsPageComponent {
     this.form.disable({ emitEvent: false });
   }
 
-  private nullableText(value: string | null | undefined): string | null {
-    const normalized = value?.trim() ?? '';
+  private nullableText(value: string | number | null | undefined): string | null {
+    const normalized = String(value ?? '').trim();
 
     return normalized === '' ? null : normalized;
   }
@@ -487,5 +870,35 @@ export class SettingsPageComponent {
     const normalized = this.nullableText(value);
 
     return normalized ? normalized.toUpperCase() : null;
+  }
+
+  private resolveLegacyNotice(value: string | null): string | null {
+    return (
+      {
+        'invoice-data': 'Los datos fijos de factura del sistema legacy ahora se administran desde este Settings nuevo.',
+        language: 'El idioma general ahora se administra desde Settings y ya no depende del menu legacy.',
+        currency: 'La moneda operativa ahora se administra desde Settings con catalogo actualizado en la API nueva.',
+      }[value ?? ''] ?? null
+    );
+  }
+
+  private toDateTimeLocalValue(value: string | null): string {
+    if (!value) {
+      return '';
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 }

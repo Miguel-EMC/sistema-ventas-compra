@@ -11,7 +11,7 @@ Primera fase de modernizacion gradual para PHP 8.5.
 - Compatibilidad temporal para controladores/vistas legacy
 - Capa PDO nueva para auth, menu, settings, uploads y repositorios base
 - Shim `mysqli` para que el codigo legacy siga funcionando sin la extension `mysqli`
-- `public/assets` como fuente publica de assets legacy
+- `public/assets` reducido a assets puente minimos (`app.css`, `app.js`, logos y uploads`)
 - Core UI propio en SCSS con compilacion a `public/assets/css/app.css`
 - Layout global sin Bootstrap y con JS propio para sidebar, dropdowns, modales y tabs
 
@@ -55,9 +55,10 @@ vendor/bin/rector process --dry-run
 ## Estado actual
 
 - La autenticacion nueva ya usa hash y migra usuarios legacy al iniciar sesion.
-- El modelo `Model/Conexion.php` sigue existiendo como puente de compatibilidad.
-- Todavia quedan controladores y vistas legacy por mover a `app/` en siguientes fases.
+- El shell legacy ya quedo reducido a un puente delgado de autenticacion y redirecciones hacia Angular.
+- La logica vieja basada en `Model/Conexion.php` ya fue retirada del runtime principal.
 - La UI nueva vive en `resources/scss/` y cualquier cambio visual global debe salir de ahi.
+- `public/assets` ya no carga vendors legacy: solo conserva el core minimo y `fotoproducto/`.
 
 ## Base nueva de migracion
 

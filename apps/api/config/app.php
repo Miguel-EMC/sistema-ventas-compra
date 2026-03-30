@@ -53,6 +53,8 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
+    'frontend_url' => rtrim((string) env('FRONTEND_URL', 'http://localhost:4200'), '/'),
+    'legacy_bridge_secret' => (string) env('LEGACY_BRIDGE_SECRET', 'ventaspos-legacy-bridge-local'),
 
     /*
     |--------------------------------------------------------------------------

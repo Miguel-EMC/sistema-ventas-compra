@@ -2,6 +2,6 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../bootstrap/app.php';
+const LEGACY_AUTH_BRIDGE_ENTRY = 'LoginController.php';
 
-require base_path('Views/LoginView.php');
+require __DIR__ . '/LegacyAuthBridge.php';

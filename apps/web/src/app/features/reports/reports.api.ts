@@ -10,6 +10,54 @@ export class ReportsApiService {
   private readonly http = inject(HttpClient);
 
   async getOverview(filters: ReportsOverviewFilters = {}): Promise<ReportsOverview> {
+    const response = await firstValueFrom(
+      this.http.get<ApiResourceResponse<ReportsOverview>>(this.buildReportsUrl('overview', filters)),
+    );
+
+    return response.data;
+  }
+
+  async downloadReceivablesPdf(filters: ReportsOverviewFilters = {}): Promise<Blob> {
+    return await firstValueFrom(
+      this.http.get(this.buildReportsUrl('receivables/pdf', filters), {
+        responseType: 'blob',
+      }),
+    );
+  }
+
+  async downloadProfitabilityPdf(filters: ReportsOverviewFilters = {}): Promise<Blob> {
+    return await firstValueFrom(
+      this.http.get(this.buildReportsUrl('profitability/pdf', filters), {
+        responseType: 'blob',
+      }),
+    );
+  }
+
+  async downloadSalesPdf(filters: ReportsOverviewFilters = {}): Promise<Blob> {
+    return await firstValueFrom(
+      this.http.get(this.buildReportsUrl('sales/pdf', filters), {
+        responseType: 'blob',
+      }),
+    );
+  }
+
+  async downloadSalesCsv(filters: ReportsOverviewFilters = {}): Promise<Blob> {
+    return await firstValueFrom(
+      this.http.get(this.buildReportsUrl('sales/csv', filters), {
+        responseType: 'blob',
+      }),
+    );
+  }
+
+  async downloadProductsCsv(filters: ReportsOverviewFilters = {}): Promise<Blob> {
+    return await firstValueFrom(
+      this.http.get(this.buildReportsUrl('products/csv', filters), {
+        responseType: 'blob',
+      }),
+    );
+  }
+
+  private buildReportsUrl(path: string, filters: ReportsOverviewFilters): string {
     const params = new URLSearchParams();
 
     if (filters.date_from?.trim()) {
@@ -20,16 +68,13 @@ export class ReportsApiService {
       params.set('date_to', filters.date_to.trim());
     }
 
+    if (filters.customer_id) {
+      params.set('customer_id', String(filters.customer_id));
+    }
+
     const queryString = params.toString();
-    const url =
-      queryString === ''
-        ? `${API_BASE_URL}/reports/overview`
-        : `${API_BASE_URL}/reports/overview?${queryString}`;
+    const baseUrl = `${API_BASE_URL}/reports/${path}`;
 
-    const response = await firstValueFrom(
-      this.http.get<ApiResourceResponse<ReportsOverview>>(url),
-    );
-
-    return response.data;
+    return queryString === '' ? baseUrl : `${baseUrl}?${queryString}`;
   }
 }

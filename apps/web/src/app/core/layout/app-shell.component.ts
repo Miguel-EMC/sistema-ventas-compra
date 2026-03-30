@@ -65,6 +65,9 @@ export class AppShellComponent {
   }).format(new Date());
 
   protected async logout(): Promise<void> {
-    await this.auth.logout();
+    await this.auth.logout({
+      terminateLegacy: true,
+      redirectTo: '/login?legacy=signed-out&logout=1',
+    });
   }
 }

@@ -1,3 +1,9 @@
+export interface CompanyProfileMetadata {
+  billing_owner_name?: string | null;
+  billing_address_reference?: string | null;
+  [key: string]: unknown;
+}
+
 export interface CompanyProfile {
   id: number;
   legal_name: string;
@@ -11,7 +17,7 @@ export interface CompanyProfile {
   region: string | null;
   country_code: string | null;
   is_primary: boolean;
-  metadata: Record<string, unknown> | null;
+  metadata: CompanyProfileMetadata | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -32,6 +38,24 @@ export interface Locale {
   is_default: boolean;
 }
 
+export interface TaxResolution {
+  id: number;
+  name: string;
+  authorization_number: string;
+  series: string | null;
+  invoice_number_start: number;
+  invoice_number_end: number;
+  next_invoice_number: number;
+  remaining_invoices: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  technical_key: string | null;
+  legend: string | null;
+  is_active: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export interface BusinessSystemSettings {
   currency_code: string;
   locale_code: string;
@@ -48,6 +72,8 @@ export interface BusinessSettings {
   locale: Locale | null;
   currencies: Currency[];
   locales: Locale[];
+  active_tax_resolution: TaxResolution | null;
+  tax_resolutions: TaxResolution[];
   system_settings: BusinessSystemSettings;
 }
 
@@ -63,6 +89,20 @@ export interface UpdateBusinessSettingsPayload {
     city: string | null;
     region: string | null;
     country_code: string | null;
+    metadata: CompanyProfileMetadata | null;
   };
   system_settings: BusinessSystemSettings;
+  active_tax_resolution: {
+    id?: number;
+    name: string;
+    authorization_number: string;
+    series: string | null;
+    invoice_number_start: number;
+    invoice_number_end: number;
+    next_invoice_number: number;
+    starts_at: string;
+    ends_at: string | null;
+    technical_key: string | null;
+    legend: string | null;
+  } | null;
 }

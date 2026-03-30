@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { resolveApiError } from '../../core/http/resolve-api-error';
 import { DOCUMENT_TYPE_OPTIONS, BusinessPartner, BusinessPartnerPayload } from '../partners/partners.types';
@@ -21,6 +22,13 @@ import { SuppliersApiService } from './suppliers.api';
         </div>
         <span class="pill">Migracion real del dominio Suppliers</span>
       </header>
+
+      @if (legacyNotice()) {
+        <article class="surface surface--muted stack">
+          <span class="page-kicker">Migracion</span>
+          <strong>{{ legacyNotice() }}</strong>
+        </article>
+      }
 
       <section class="grid grid--cards">
         <article class="surface metric-card">
@@ -221,6 +229,8 @@ export class SuppliersPageComponent {
   private readonly auth = inject(AuthService);
   private readonly api = inject(SuppliersApiService);
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
+  private legacyPrefillApplied = false;
 
   protected readonly isAdmin = this.auth.isAdmin;
   protected readonly documentTypes = DOCUMENT_TYPE_OPTIONS;
@@ -229,6 +239,7 @@ export class SuppliersPageComponent {
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly editingId = signal<number | null>(null);
+  protected readonly legacyNotice = signal<string | null>(null);
 
   protected readonly activeSuppliersCount = computed(
     () => this.suppliers().filter((supplier) => supplier.is_active).length,
@@ -254,6 +265,8 @@ export class SuppliersPageComponent {
   });
 
   public constructor() {
+    this.legacyNotice.set(this.resolveLegacyNotice(this.route.snapshot.queryParamMap.get('legacy')));
+    this.applyLegacyPrefillFromQuery();
     void this.loadSuppliers();
   }
 
@@ -371,5 +384,41 @@ export class SuppliersPageComponent {
     const normalized = value?.trim() ?? '';
 
     return normalized === '' ? null : normalized;
+  }
+
+  private applyLegacyPrefillFromQuery(): void {
+    if (this.legacyPrefillApplied || !this.isAdmin()) {
+      this.legacyPrefillApplied = true;
+      return;
+    }
+
+    this.legacyPrefillApplied = true;
+
+    const query = this.route.snapshot.queryParamMap;
+    const name = this.nullableText(query.get('name'));
+    const phone = this.nullableText(query.get('phone'));
+    const address = this.nullableText(query.get('address'));
+
+    if (name === null && phone === null && address === null) {
+      return;
+    }
+
+    this.resetForm();
+    this.form.patchValue({
+      name: name ?? '',
+      phone: phone ?? '',
+      address: address ?? '',
+    });
+  }
+
+  private resolveLegacyNotice(value: string | null): string | null {
+    switch ((value ?? '').trim()) {
+      case 'supplier-form-write':
+        return 'El formulario legacy de proveedores ya no escribe en la base anterior. Revisa los datos precargados y confirma el registro aqui.';
+      case 'supplier-form-delete':
+        return 'La eliminacion legacy de proveedores fue retirada. Usa este modulo para administrar la base nueva.';
+      default:
+        return null;
+    }
   }
 }

@@ -2,5 +2,6 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/AccessUsers.php';
+const LEGACY_FRONTEND_BRIDGE_ENTRY = 'principal.php';
 
+require __DIR__ . '/LegacyFrontendBridge.php';
