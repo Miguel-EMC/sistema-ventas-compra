@@ -54,13 +54,13 @@ import {
       <header class="page-header">
         <div class="page-header__copy">
           <span class="page-kicker">POS y checkout</span>
-          <h1 class="page-title">Borrador real, checkout y facturacion sobre la API nueva.</h1>
+          <h1 class="page-title">Ventas, cobro y facturacion en una sola operacion.</h1>
           <p class="page-description">
-            Este flujo ya reemplaza la preventa global legacy por un borrador aislado por usuario,
-            con checkout, rebaja de stock y factura real cuando el documento lo requiere.
+            Gestiona la venta desde una interfaz mas clara: prepara el pedido, confirma el cobro y
+            revisa el historial posterior sin mezclar demasiadas tareas en la misma vista.
           </p>
         </div>
-        <span class="pill">Angular Material + dominio Sales</span>
+        <span class="pill">Operacion comercial</span>
       </header>
 
       @if (loading()) {
@@ -179,11 +179,23 @@ import {
         </article>
       </section>
 
+      <article class="surface stack">
+        <div class="sales-sections">
+          <button class="sales-section" type="button" [class.is-active]="salesView() === 'checkout'" (click)="setSalesView('checkout')">
+            Operar POS
+          </button>
+          <button class="sales-section" type="button" [class.is-active]="salesView() === 'history'" (click)="setSalesView('history')">
+            Historial y postventa
+          </button>
+        </div>
+      </article>
+
       <section class="sales-layout">
+        @if (salesView() === 'checkout') {
         <mat-card appearance="outlined" class="sales-card">
           <mat-card-header>
-            <mat-card-title>Cabecera del borrador</mat-card-title>
-            <mat-card-subtitle>Cliente, notas y seleccion de producto.</mat-card-subtitle>
+            <mat-card-title>Datos de la venta</mat-card-title>
+            <mat-card-subtitle>Cliente, observaciones y carga inicial del pedido.</mat-card-subtitle>
           </mat-card-header>
 
           <mat-card-content class="stack">
@@ -262,10 +274,9 @@ import {
 
         <mat-card appearance="outlined" class="sales-card sales-card--draft">
           <mat-card-header>
-            <mat-card-title>Borrador activo</mat-card-title>
+            <mat-card-title>Resumen actual</mat-card-title>
             <mat-card-subtitle>
               {{ draft()?.customer?.name || 'Consumidor final' }}
-              · {{ draft()?.channel || 'pos' }}
             </mat-card-subtitle>
           </mat-card-header>
 
@@ -431,7 +442,9 @@ import {
             </form>
           </mat-card-content>
         </mat-card>
+        }
 
+        @if (salesView() === 'history') {
         <mat-card appearance="outlined" class="sales-card">
           <mat-card-header>
             <mat-card-title>Ventas recientes</mat-card-title>
@@ -975,6 +988,7 @@ import {
             }
           </mat-card-content>
         </mat-card>
+        }
       </section>
     </section>
   `,
@@ -987,6 +1001,28 @@ import {
       display: grid;
       gap: 1rem;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(18rem, 0.8fr);
+    }
+
+    .sales-sections {
+      display: flex;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .sales-section {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 999px;
+      background: rgba(246, 249, 252, 0.95);
+      color: var(--text-muted);
+      font-weight: 700;
+      min-height: 2.8rem;
+      padding: 0 1rem;
+    }
+
+    .sales-section.is-active {
+      border-color: rgba(22, 138, 87, 0.26);
+      background: rgba(22, 138, 87, 0.1);
+      color: var(--primary-strong);
     }
 
     .sales-card {
@@ -1276,6 +1312,7 @@ export class SalesPageComponent {
   protected readonly businessSettings = signal<BusinessSettings | null>(null);
   protected readonly selectedProductId = signal<number | null>(null);
   protected readonly selectedDocumentType = signal<string>('ticket');
+  protected readonly salesView = signal<'checkout' | 'history'>('checkout');
   protected readonly selectedSaleId = signal<number | null>(null);
   protected readonly selectedSaleDetail = signal<SaleDetail | null>(null);
   protected readonly selectedSaleForCancellationId = signal<number | null>(null);
@@ -1593,6 +1630,7 @@ export class SalesPageComponent {
   }
 
   protected async toggleSaleDetail(sale: SaleRecord): Promise<void> {
+    this.salesView.set('history');
     if (this.selectedSaleId() === sale.id) {
       this.clearSelectedSale();
       return;
@@ -1896,10 +1934,15 @@ export class SalesPageComponent {
   }
 
   protected prepareSaleCancellation(sale: SaleRecord): void {
+    this.salesView.set('history');
     this.selectedSaleForCancellationId.set(sale.id);
     this.saleCancellationReason.set(
       sale.cancellation_reason ?? 'Anulacion registrada desde la nueva plataforma.',
     );
+  }
+
+  protected setSalesView(view: 'checkout' | 'history'): void {
+    this.salesView.set(view);
   }
 
   protected clearSaleCancellation(): void {

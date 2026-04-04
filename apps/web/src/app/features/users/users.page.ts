@@ -1,15 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { AuthService } from '../../core/auth/auth.service';
 import { resolveApiError } from '../../core/http/resolve-api-error';
 import { UsersApiService } from './users.api';
@@ -17,18 +9,7 @@ import { SaveUserPayload, UserRecord, UserRole } from './users.types';
 
 @Component({
   selector: 'app-users-page',
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatCardModule,
-    MatChipsModule,
-    MatDividerModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatProgressBarModule,
-    MatSelectModule,
-    MatSlideToggleModule,
-  ],
+  imports: [ReactiveFormsModule, MatProgressBarModule],
   template: `
     <section class="stack users-page">
       <header class="page-header">
@@ -94,38 +75,29 @@ import { SaveUserPayload, UserRecord, UserRole } from './users.types';
         </article>
       </section>
 
-      <section class="users-layout">
-        <mat-card appearance="outlined" class="users-card">
-          <mat-card-header>
-            <mat-card-title>Equipo interno</mat-card-title>
-            <mat-card-subtitle>Busqueda, estado y acciones sobre usuarios migrados.</mat-card-subtitle>
-          </mat-card-header>
-
-          <mat-card-content class="stack">
+      <section class="stack">
+        <article class="surface stack">
             <div class="users-toolbar">
-              <mat-form-field appearance="outline" class="users-toolbar__search">
-                <mat-label>Buscar usuarios</mat-label>
+              <div class="field field--search users-toolbar__search">
+                <label for="user-search">Buscar usuarios</label>
                 <input
-                  matInput
                   id="user-search"
                   type="text"
                   [value]="search()"
                   (input)="onSearch($event)"
                   placeholder="Nombre, usuario o correo"
                 />
-              </mat-form-field>
+              </div>
 
               <div class="cta-row">
-                <button mat-stroked-button type="button" (click)="load()" [disabled]="loading()">
+                <button class="btn" type="button" (click)="load()" [disabled]="loading()">
                   Refrescar
                 </button>
-                <button mat-flat-button color="primary" type="button" (click)="resetForm()">
+                <button class="btn btn--primary" type="button" (click)="openCreateDialog()">
                   Nuevo usuario
                 </button>
               </div>
             </div>
-
-            <mat-divider></mat-divider>
 
             @if (users().length === 0) {
               <p class="muted">No hay usuarios para mostrar con los filtros actuales.</p>
@@ -137,7 +109,7 @@ import { SaveUserPayload, UserRecord, UserRole } from './users.types';
                       <div class="users-list__heading">
                         <strong>{{ user.display_name || user.name }}</strong>
                         @if (isCurrentUser(user)) {
-                          <mat-chip>Tu sesion</mat-chip>
+                          <span class="pill pill--muted">Tu sesion</span>
                         }
                       </div>
 
@@ -147,22 +119,21 @@ import { SaveUserPayload, UserRecord, UserRole } from './users.types';
                         · ultimo acceso {{ formatDateTime(user.last_login_at) }}
                       </small>
 
-                      <mat-chip-set>
-                        <mat-chip>{{ user.is_active ? 'Activo' : 'Inactivo' }}</mat-chip>
+                      <div class="badge-row">
+                        <span class="pill">{{ user.is_active ? 'Activo' : 'Inactivo' }}</span>
                         @if (user.role?.slug) {
-                          <mat-chip>{{ user.role?.slug }}</mat-chip>
+                          <span class="pill pill--muted">{{ user.role?.slug }}</span>
                         }
-                        <mat-chip>Alta {{ formatDateTime(user.created_at) }}</mat-chip>
-                      </mat-chip-set>
+                        <span class="pill pill--muted">Alta {{ formatDateTime(user.created_at) }}</span>
+                      </div>
                     </div>
 
                     <div class="users-list__actions">
-                      <button mat-stroked-button type="button" (click)="editUser(user)">
+                      <button class="btn btn--ghost" type="button" (click)="editUser(user)">
                         Editar
                       </button>
                       <button
-                        mat-flat-button
-                        color="warn"
+                        class="btn"
                         type="button"
                         (click)="deleteUser(user)"
                         [disabled]="deletingUserId() === user.id || isCurrentUser(user)"
@@ -180,137 +151,140 @@ import { SaveUserPayload, UserRecord, UserRole } from './users.types';
                 }
               </div>
             }
-          </mat-card-content>
-        </mat-card>
+        </article>
 
-        <mat-card appearance="outlined" class="users-card">
-          <mat-card-header>
-            <mat-card-title>
-              @if (editingUserId()) {
-                Editar usuario
-              } @else {
-                Crear usuario
-              }
-            </mat-card-title>
-            <mat-card-subtitle>
-              @if (editingUserId()) {
-                Ajusta rol, estado y credenciales del perfil seleccionado.
-              } @else {
-                Prepara un acceso interno nuevo para la plataforma migrada.
-              }
-            </mat-card-subtitle>
-          </mat-card-header>
+        @if (auth.user(); as currentUser) {
+          <article class="surface surface--muted stack">
+            <span class="page-kicker">Sesion actual</span>
+            <strong>{{ currentUser.display_name || currentUser.name }}</strong>
+            <span>{{ currentUser.role?.name || 'Sin rol' }} · {{ currentUser.username }}</span>
+            <small>La API bloquea la autoeliminacion para cuidar el acceso administrativo.</small>
+          </article>
+        }
+      </section>
 
-          <mat-card-content class="stack">
+      @if (userDialogOpen()) {
+        <div class="users-modal-backdrop" (click)="closeDialog()"></div>
+        <section class="users-modal" role="dialog" aria-modal="true">
+          <article class="surface users-modal__panel">
+            <header class="users-modal__header">
+              <div class="page-header__copy">
+                <span class="page-kicker">Usuario</span>
+                <h2 class="page-title">{{ editingUserId() ? 'Editar usuario' : 'Nuevo usuario' }}</h2>
+                <p class="page-description">
+                  Divide identidad, acceso y seguridad para que el modulo no compita con el listado.
+                </p>
+              </div>
+              <button class="btn btn--ghost" type="button" (click)="closeDialog()">Cerrar</button>
+            </header>
+
+            <div class="users-steps">
+              <button class="users-step" type="button" [class.is-active]="userStep() === 'profile'" (click)="setUserStep('profile')">Perfil</button>
+              <button class="users-step" type="button" [class.is-active]="userStep() === 'access'" (click)="setUserStep('access')">Acceso</button>
+              <button class="users-step" type="button" [class.is-active]="userStep() === 'security'" (click)="setUserStep('security')">Seguridad</button>
+            </div>
+
             <form class="users-form" [formGroup]="form" (ngSubmit)="submit()">
-              <div class="users-grid">
-                <mat-form-field appearance="outline">
-                  <mat-label>Nombre</mat-label>
-                  <input matInput id="user-name" type="text" formControlName="name" />
-                </mat-form-field>
+              @if (userStep() === 'profile') {
+                <div class="users-grid">
+                  <div class="field">
+                    <label for="user-name">Nombre</label>
+                    <input id="user-name" type="text" formControlName="name" />
+                  </div>
 
-                <mat-form-field appearance="outline">
-                  <mat-label>Nombre visible</mat-label>
-                  <input matInput id="user-display-name" type="text" formControlName="display_name" />
-                </mat-form-field>
-              </div>
+                  <div class="field">
+                    <label for="user-display-name">Nombre visible</label>
+                    <input id="user-display-name" type="text" formControlName="display_name" />
+                  </div>
+                </div>
+              }
 
-              <div class="users-grid">
-                <mat-form-field appearance="outline">
-                  <mat-label>Usuario</mat-label>
-                  <input matInput id="user-username" type="text" formControlName="username" />
-                </mat-form-field>
+              @if (userStep() === 'access') {
+                <div class="users-grid">
+                  <div class="field">
+                    <label for="user-username">Usuario</label>
+                    <input id="user-username" type="text" formControlName="username" />
+                  </div>
 
-                <mat-form-field appearance="outline">
-                  <mat-label>Correo</mat-label>
-                  <input matInput id="user-email" type="email" formControlName="email" />
-                </mat-form-field>
-              </div>
+                  <div class="field">
+                    <label for="user-email">Correo</label>
+                    <input id="user-email" type="email" formControlName="email" />
+                  </div>
+                </div>
 
-              <mat-form-field appearance="outline">
-                <mat-label>Rol</mat-label>
-                <mat-select id="user-role" formControlName="role_id">
-                  @for (role of roles(); track role.id) {
-                    <mat-option [value]="role.id">{{ role.name }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
+                <div class="users-grid">
+                  <div class="field">
+                    <label for="user-role">Rol</label>
+                    <select id="user-role" formControlName="role_id">
+                      <option [ngValue]="null">Selecciona un rol</option>
+                      @for (role of roles(); track role.id) {
+                        <option [ngValue]="role.id">{{ role.name }}</option>
+                      }
+                    </select>
+                  </div>
 
-              <div class="users-state-row">
-                <mat-slide-toggle formControlName="is_active">Usuario habilitado para ingresar</mat-slide-toggle>
-                <span class="muted">
+                  <div class="field">
+                    <label for="user-status">Estado</label>
+                    <select id="user-status" formControlName="is_active">
+                      <option [ngValue]="true">Activo</option>
+                      <option [ngValue]="false">Inactivo</option>
+                    </select>
+                  </div>
+                </div>
+
+                <p class="muted users-note">
                   Estado actual: {{ form.getRawValue().is_active ? 'Activo' : 'Inactivo' }}
-                </span>
-              </div>
+                </p>
+              }
 
-              <mat-divider></mat-divider>
+              @if (userStep() === 'security') {
+                <div class="users-grid">
+                  <div class="field">
+                    <label for="user-password">Password</label>
+                    <input id="user-password" type="password" formControlName="password" />
+                  </div>
 
-              <div class="users-grid">
-                <mat-form-field appearance="outline">
-                  <mat-label>Password</mat-label>
-                  <input matInput id="user-password" type="password" formControlName="password" />
-                </mat-form-field>
+                  <div class="field">
+                    <label for="user-password-confirmation">Confirmar password</label>
+                    <input id="user-password-confirmation" type="password" formControlName="password_confirmation" />
+                  </div>
+                </div>
 
-                <mat-form-field appearance="outline">
-                  <mat-label>Confirmar password</mat-label>
-                  <input
-                    matInput
-                    id="user-password-confirmation"
-                    type="password"
-                    formControlName="password_confirmation"
-                  />
-                </mat-form-field>
-              </div>
-
-              <p class="muted users-note">
-                @if (editingUserId()) {
-                  Deja las contrasenas vacias si no quieres cambiarlas.
-                } @else {
-                  La contrasena inicial debe tener al menos 8 caracteres.
-                }
-              </p>
-
-              <div class="cta-row">
-                <button mat-stroked-button type="button" (click)="resetForm()" [disabled]="saving()">
-                  Limpiar
-                </button>
-                <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
-                  @if (saving()) {
-                    Guardando...
-                  } @else if (editingUserId()) {
-                    Actualizar usuario
+                <p class="muted users-note">
+                  @if (editingUserId()) {
+                    Deja las contrasenas vacias si no quieres cambiarlas.
                   } @else {
-                    Crear usuario
+                    La contrasena inicial debe tener al menos 8 caracteres.
                   }
+                </p>
+              }
+
+              <div class="cta-row users-modal__actions">
+                <button class="btn btn--ghost" type="button" (click)="previousUserStep()" [disabled]="userStep() === 'profile'">
+                  Atras
                 </button>
+                @if (userStep() !== 'security') {
+                  <button class="btn" type="button" (click)="nextUserStep()">Siguiente</button>
+                } @else {
+                  <button class="btn btn--ghost" type="button" (click)="resetForm()" [disabled]="saving()">Limpiar</button>
+                  <button class="btn btn--primary" type="submit" [disabled]="saving()">
+                    @if (saving()) {
+                      Guardando...
+                    } @else if (editingUserId()) {
+                      Actualizar usuario
+                    } @else {
+                      Crear usuario
+                    }
+                  </button>
+                }
               </div>
             </form>
-
-            @if (auth.user(); as currentUser) {
-              <article class="surface surface--muted stack">
-                <span class="page-kicker">Sesion actual</span>
-                <strong>{{ currentUser.display_name || currentUser.name }}</strong>
-                <span>{{ currentUser.role?.name || 'Sin rol' }} · {{ currentUser.username }}</span>
-                <small>La API bloquea la autoeliminacion para cuidar el acceso administrativo.</small>
-              </article>
-            }
-          </mat-card-content>
-        </mat-card>
-      </section>
+          </article>
+        </section>
+      }
     </section>
   `,
   styles: `
-    .users-layout {
-      display: grid;
-      gap: 1.25rem;
-      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-      align-items: start;
-    }
-
-    .users-card mat-card-content:first-of-type {
-      padding-top: 0;
-    }
-
     .users-toolbar {
       display: flex;
       gap: 1rem;
@@ -393,10 +367,62 @@ import { SaveUserPayload, UserRecord, UserRole } from './users.types';
       border-left: 4px solid rgba(22, 163, 74, 0.65);
     }
 
-    @media (max-width: 1024px) {
-      .users-layout {
-        grid-template-columns: 1fr;
-      }
+    .users-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(15, 23, 42, 0.28);
+    }
+
+    .users-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 61;
+      display: grid;
+      place-items: center;
+      padding: 1.25rem;
+    }
+
+    .users-modal__panel {
+      width: min(100%, 56rem);
+      max-height: calc(100vh - 2.5rem);
+      overflow: auto;
+    }
+
+    .users-modal__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .users-steps {
+      display: flex;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .users-step {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 999px;
+      background: rgba(246, 249, 252, 0.95);
+      color: var(--text-muted);
+      font-weight: 700;
+      min-height: 2.7rem;
+      padding: 0 1rem;
+    }
+
+    .users-step.is-active {
+      border-color: rgba(22, 138, 87, 0.26);
+      background: rgba(22, 138, 87, 0.1);
+      color: var(--primary-strong);
+    }
+
+    .users-modal__actions {
+      justify-content: flex-end;
     }
 
     @media (max-width: 720px) {
@@ -431,6 +457,8 @@ export class UsersPageComponent {
   protected readonly successMessage = signal<string | null>(null);
   protected readonly editingUserId = signal<number | null>(null);
   protected readonly legacyNotice = signal<string | null>(null);
+  protected readonly userDialogOpen = signal(false);
+  protected readonly userStep = signal<'profile' | 'access' | 'security'>('profile');
   protected readonly activeUsersCount = computed(
     () => this.users().filter((user) => user.is_active).length,
   );
@@ -485,6 +513,8 @@ export class UsersPageComponent {
 
   protected editUser(user: UserRecord): void {
     this.editingUserId.set(user.id);
+    this.userDialogOpen.set(true);
+    this.userStep.set('profile');
     this.error.set(null);
     this.successMessage.set(null);
     this.form.patchValue({
@@ -513,6 +543,34 @@ export class UsersPageComponent {
       password: '',
       password_confirmation: '',
     });
+  }
+
+  protected openCreateDialog(): void {
+    this.resetForm();
+    this.userStep.set('profile');
+    this.userDialogOpen.set(true);
+  }
+
+  protected closeDialog(): void {
+    this.userDialogOpen.set(false);
+    this.userStep.set('profile');
+    this.resetForm();
+  }
+
+  protected setUserStep(step: 'profile' | 'access' | 'security'): void {
+    this.userStep.set(step);
+  }
+
+  protected nextUserStep(): void {
+    this.userStep.set(
+      this.userStep() === 'profile' ? 'access' : 'security',
+    );
+  }
+
+  protected previousUserStep(): void {
+    this.userStep.set(
+      this.userStep() === 'security' ? 'access' : 'profile',
+    );
   }
 
   protected async submit(): Promise<void> {
@@ -553,6 +611,7 @@ export class UsersPageComponent {
         password: '',
         password_confirmation: '',
       });
+      this.userDialogOpen.set(false);
       this.editingUserId.set(null);
       await this.load();
     } catch (error) {

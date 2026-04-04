@@ -62,7 +62,7 @@ import {
         </article>
       </section>
 
-      <section class="admin-layout">
+      <section class="stack">
         <article class="surface stack">
           <div class="toolbar">
             <div class="field field--search">
@@ -95,8 +95,11 @@ import {
               </button>
               <button class="btn" type="button" (click)="loadProducts()">Refrescar</button>
               @if (isAdmin()) {
-                <button class="btn btn--ghost" type="button" (click)="resetProductForm()">
-                  Nuevo
+                <button class="btn btn--ghost" type="button" (click)="openCategoryDialog()">
+                  Categorias
+                </button>
+                <button class="btn btn--primary" type="button" (click)="openCreateProductDialog()">
+                  Nuevo producto
                 </button>
               }
             </div>
@@ -143,6 +146,11 @@ import {
                     <button class="btn btn--ghost" type="button" (click)="editProduct(product)">
                       Editar
                     </button>
+                    @if (isAdmin() && product.track_stock) {
+                      <button class="btn btn--ghost" type="button" (click)="openAdjustmentDialog(product)">
+                        Stock
+                      </button>
+                    }
                     @if (isAdmin()) {
                       <button class="btn" type="button" (click)="deleteProduct(product)">
                         Eliminar
@@ -154,28 +162,65 @@ import {
             </div>
           }
         </article>
+      </section>
 
-        <div class="stack">
-          @if (isAdmin()) {
-            <article class="surface stack">
-              <div class="page-header">
-                <div class="page-header__copy">
-                  <span class="page-kicker">Formulario</span>
-                  <h2 class="page-title">
-                    @if (editingProductId()) {
-                      Editar producto
-                    } @else {
-                      Crear producto
-                    }
-                  </h2>
-                  <p class="page-description">
-                    Productos y activos ya no se mezclan. Este formulario solo gobierna el catalogo
-                    comercial y su logica de venta.
-                  </p>
-                </div>
+      @if (!isAdmin()) {
+        <article class="surface stack">
+          <span class="page-kicker">Solo lectura</span>
+          <h2 class="page-title">Tu rol puede consultar, no administrar.</h2>
+          <p class="page-description">
+            El catalogo y el stock ya se pueden revisar desde aqui, pero las altas, ajustes y
+            eliminaciones quedan reservadas para administracion.
+          </p>
+        </article>
+      }
+
+      @if (isAdmin() && productDialogOpen()) {
+        <div class="products-modal-backdrop" (click)="closeProductDialog()"></div>
+        <section class="products-modal" role="dialog" aria-modal="true">
+          <article class="surface products-modal__panel products-modal__panel--wide">
+            <header class="products-modal__header">
+              <div class="page-header__copy">
+                <span class="page-kicker">Producto</span>
+                <h2 class="page-title">
+                  {{ editingProductId() ? 'Editar producto' : 'Nuevo producto' }}
+                </h2>
+                <p class="page-description">
+                  Completa el producto por pasos para evitar saturacion en una sola pantalla.
+                </p>
               </div>
+              <button class="btn btn--ghost" type="button" (click)="closeProductDialog()">Cerrar</button>
+            </header>
 
-              <form class="form-grid" [formGroup]="productForm" (ngSubmit)="submitProduct()">
+            <div class="products-steps">
+              <button
+                class="products-step"
+                type="button"
+                [class.is-active]="productStep() === 'details'"
+                (click)="setProductStep('details')"
+              >
+                Detalles
+              </button>
+              <button
+                class="products-step"
+                type="button"
+                [class.is-active]="productStep() === 'pricing'"
+                (click)="setProductStep('pricing')"
+              >
+                Precios
+              </button>
+              <button
+                class="products-step"
+                type="button"
+                [class.is-active]="productStep() === 'inventory'"
+                (click)="setProductStep('inventory')"
+              >
+                Inventario
+              </button>
+            </div>
+
+            <form class="form-grid" [formGroup]="productForm" (ngSubmit)="submitProduct()">
+              @if (productStep() === 'details') {
                 <div class="split">
                   <div class="field">
                     <label for="product-name">Nombre</label>
@@ -205,6 +250,13 @@ import {
                   </div>
                 </div>
 
+                <div class="field">
+                  <label for="product-description">Descripcion</label>
+                  <textarea id="product-description" formControlName="description"></textarea>
+                </div>
+              }
+
+              @if (productStep() === 'pricing') {
                 <div class="split">
                   <div class="field">
                     <label for="product-sale-price">Precio de venta</label>
@@ -228,7 +280,9 @@ import {
                     <input id="product-unit" type="text" formControlName="unit" />
                   </div>
                 </div>
+              }
 
+              @if (productStep() === 'inventory') {
                 <div class="split">
                   <div class="field">
                     <label for="product-track-stock">Control de stock</label>
@@ -263,23 +317,25 @@ import {
                 }
 
                 <div class="field">
-                  <label for="product-description">Descripcion</label>
-                  <textarea id="product-description" formControlName="description"></textarea>
-                </div>
-
-                <div class="field">
                   <label for="product-is-active">Estado</label>
                   <select id="product-is-active" formControlName="is_active">
                     <option [ngValue]="true">Activo</option>
                     <option [ngValue]="false">Inactivo</option>
                   </select>
                 </div>
+              }
 
-                @if (error()) {
-                  <p class="alert alert--danger">{{ error() }}</p>
-                }
+              @if (error()) {
+                <p class="alert alert--danger">{{ error() }}</p>
+              }
 
-                <div class="cta-row">
+              <div class="cta-row products-modal__actions">
+                <button class="btn btn--ghost" type="button" (click)="previousProductStep()" [disabled]="productStep() === 'details'">
+                  Atras
+                </button>
+                @if (productStep() !== 'inventory') {
+                  <button class="btn" type="button" (click)="nextProductStep()">Siguiente</button>
+                } @else {
                   <button class="btn btn--primary" type="submit" [disabled]="savingProduct()">
                     @if (savingProduct()) {
                       Guardando...
@@ -289,157 +345,219 @@ import {
                       Crear producto
                     }
                   </button>
-                  <button class="btn btn--ghost" type="button" (click)="resetProductForm()">
-                    Limpiar
-                  </button>
-                </div>
-              </form>
-            </article>
+                }
+              </div>
+            </form>
+          </article>
+        </section>
+      }
 
-            @if (editingProductId() && canAdjustStock()) {
-              <article class="surface stack">
-                <div class="page-header">
-                  <div class="page-header__copy">
-                    <span class="page-kicker">Ajuste operativo</span>
-                    <h2 class="page-title">Corregir stock</h2>
-                    <p class="page-description">
-                      Este ajuste crea un movimiento real. Usa positivo para entrada y negativo para
-                      salida o correccion.
-                    </p>
-                  </div>
-                </div>
+      @if (isAdmin() && categoryDialogOpen()) {
+        <div class="products-modal-backdrop" (click)="closeCategoryDialog()"></div>
+        <section class="products-modal" role="dialog" aria-modal="true">
+          <article class="surface products-modal__panel">
+            <header class="products-modal__header">
+              <div class="page-header__copy">
+                <span class="page-kicker">Categorias</span>
+                <h2 class="page-title">Gestionar categorias</h2>
+                <p class="page-description">
+                  Mantiene la clasificacion comercial en un flujo aparte del producto.
+                </p>
+              </div>
+              <button class="btn btn--ghost" type="button" (click)="closeCategoryDialog()">Cerrar</button>
+            </header>
 
-                <form class="form-grid" [formGroup]="adjustmentForm" (ngSubmit)="submitAdjustment()">
-                  <div class="field">
-                    <label for="product-adjustment-quantity">Cantidad</label>
-                    <input
-                      id="product-adjustment-quantity"
-                      type="number"
-                      step="0.01"
-                      formControlName="quantity"
-                    />
-                  </div>
+            <form class="form-grid" [formGroup]="categoryForm" (ngSubmit)="submitCategory()">
+              <div class="field">
+                <label for="product-category-name">Nombre</label>
+                <input id="product-category-name" type="text" formControlName="name" />
+              </div>
 
-                  <div class="field">
-                    <label for="product-adjustment-reason">Motivo</label>
-                    <input
-                      id="product-adjustment-reason"
-                      type="text"
-                      formControlName="reason"
-                      placeholder="conteo, merma, ajuste manual"
-                    />
-                  </div>
+              <div class="field">
+                <label for="product-category-description">Descripcion</label>
+                <textarea id="product-category-description" formControlName="description"></textarea>
+              </div>
 
-                  <div class="field">
-                    <label for="product-adjustment-notes">Notas</label>
-                    <textarea id="product-adjustment-notes" formControlName="notes"></textarea>
-                  </div>
+              <div class="field">
+                <label for="product-category-active">Estado</label>
+                <select id="product-category-active" formControlName="is_active">
+                  <option [ngValue]="true">Activa</option>
+                  <option [ngValue]="false">Inactiva</option>
+                </select>
+              </div>
 
-                  @if (adjustmentError()) {
-                    <p class="alert alert--danger">{{ adjustmentError() }}</p>
+              @if (categoryError()) {
+                <p class="alert alert--danger">{{ categoryError() }}</p>
+              }
+
+              <div class="cta-row">
+                <button class="btn btn--primary" type="submit" [disabled]="savingCategory()">
+                  @if (savingCategory()) {
+                    Guardando...
+                  } @else if (editingCategoryId()) {
+                    Actualizar categoria
+                  } @else {
+                    Crear categoria
                   }
+                </button>
+                <button class="btn btn--ghost" type="button" (click)="resetCategoryForm()">
+                  Limpiar
+                </button>
+              </div>
+            </form>
 
-                  <div class="cta-row">
-                    <button class="btn btn--primary" type="submit" [disabled]="savingAdjustment()">
-                      @if (savingAdjustment()) {
-                        Aplicando...
-                      } @else {
-                        Registrar ajuste
-                      }
+            <div class="table-list">
+              @for (category of categories(); track category.id) {
+                <article class="table-list__row">
+                  <div class="table-list__copy">
+                    <strong>{{ category.name }}</strong>
+                    <p>{{ category.description || 'Sin descripcion' }}</p>
+                    <small>Slug: {{ category.slug }}</small>
+                  </div>
+
+                  <div class="table-list__actions">
+                    <span class="pill" [class.pill--warning]="!category.is_active">
+                      {{ category.is_active ? 'Activa' : 'Inactiva' }}
+                    </span>
+                    <button class="btn btn--ghost" type="button" (click)="editCategory(category)">
+                      Editar
+                    </button>
+                    <button class="btn" type="button" (click)="deleteCategory(category)">
+                      Eliminar
                     </button>
                   </div>
-                </form>
-              </article>
-            }
+                </article>
+              }
+            </div>
+          </article>
+        </section>
+      }
 
-            <article class="surface stack">
-              <div class="page-header">
-                <div class="page-header__copy">
-                  <span class="page-kicker">Categorias</span>
-                  <h2 class="page-title">Mantener clasificacion comercial</h2>
-                  <p class="page-description">
-                    Las categorias viven aparte del formulario principal para que el catalogo siga
-                    ordenado y reusable.
-                  </p>
-                </div>
+      @if (isAdmin() && adjustmentDialogOpen()) {
+        <div class="products-modal-backdrop" (click)="closeAdjustmentDialog()"></div>
+        <section class="products-modal" role="dialog" aria-modal="true">
+          <article class="surface products-modal__panel">
+            <header class="products-modal__header">
+              <div class="page-header__copy">
+                <span class="page-kicker">Stock</span>
+                <h2 class="page-title">Registrar ajuste</h2>
+                <p class="page-description">
+                  Este ajuste genera un movimiento real de inventario.
+                </p>
+              </div>
+              <button class="btn btn--ghost" type="button" (click)="closeAdjustmentDialog()">Cerrar</button>
+            </header>
+
+            <form class="form-grid" [formGroup]="adjustmentForm" (ngSubmit)="submitAdjustment()">
+              <div class="field">
+                <label for="product-adjustment-quantity">Cantidad</label>
+                <input
+                  id="product-adjustment-quantity"
+                  type="number"
+                  step="0.01"
+                  formControlName="quantity"
+                />
               </div>
 
-              <form class="form-grid" [formGroup]="categoryForm" (ngSubmit)="submitCategory()">
-                <div class="field">
-                  <label for="product-category-name">Nombre</label>
-                  <input id="product-category-name" type="text" formControlName="name" />
-                </div>
-
-                <div class="field">
-                  <label for="product-category-description">Descripcion</label>
-                  <textarea id="product-category-description" formControlName="description"></textarea>
-                </div>
-
-                <div class="field">
-                  <label for="product-category-active">Estado</label>
-                  <select id="product-category-active" formControlName="is_active">
-                    <option [ngValue]="true">Activa</option>
-                    <option [ngValue]="false">Inactiva</option>
-                  </select>
-                </div>
-
-                @if (categoryError()) {
-                  <p class="alert alert--danger">{{ categoryError() }}</p>
-                }
-
-                <div class="cta-row">
-                  <button class="btn btn--primary" type="submit" [disabled]="savingCategory()">
-                    @if (savingCategory()) {
-                      Guardando...
-                    } @else if (editingCategoryId()) {
-                      Actualizar categoria
-                    } @else {
-                      Crear categoria
-                    }
-                  </button>
-                  <button class="btn btn--ghost" type="button" (click)="resetCategoryForm()">
-                    Limpiar
-                  </button>
-                </div>
-              </form>
-
-              <div class="table-list">
-                @for (category of categories(); track category.id) {
-                  <article class="table-list__row">
-                    <div class="table-list__copy">
-                      <strong>{{ category.name }}</strong>
-                      <p>{{ category.description || 'Sin descripcion' }}</p>
-                      <small>Slug: {{ category.slug }}</small>
-                    </div>
-
-                    <div class="table-list__actions">
-                      <span class="pill" [class.pill--warning]="!category.is_active">
-                        {{ category.is_active ? 'Activa' : 'Inactiva' }}
-                      </span>
-                      <button class="btn btn--ghost" type="button" (click)="editCategory(category)">
-                        Editar
-                      </button>
-                      <button class="btn" type="button" (click)="deleteCategory(category)">
-                        Eliminar
-                      </button>
-                    </div>
-                  </article>
-                }
+              <div class="field">
+                <label for="product-adjustment-reason">Motivo</label>
+                <input
+                  id="product-adjustment-reason"
+                  type="text"
+                  formControlName="reason"
+                  placeholder="conteo, merma, ajuste manual"
+                />
               </div>
-            </article>
-          } @else {
-            <article class="surface stack">
-              <span class="page-kicker">Solo lectura</span>
-              <h2 class="page-title">Tu rol puede consultar, no administrar.</h2>
-              <p class="page-description">
-                El catalogo y el stock ya se pueden revisar desde aqui, pero las altas, ajustes y
-                eliminaciones quedan reservadas para administracion.
-              </p>
-            </article>
-          }
-        </div>
-      </section>
+
+              <div class="field">
+                <label for="product-adjustment-notes">Notas</label>
+                <textarea id="product-adjustment-notes" formControlName="notes"></textarea>
+              </div>
+
+              @if (adjustmentError()) {
+                <p class="alert alert--danger">{{ adjustmentError() }}</p>
+              }
+
+              <div class="cta-row">
+                <button class="btn btn--primary" type="submit" [disabled]="savingAdjustment()">
+                  @if (savingAdjustment()) {
+                    Aplicando...
+                  } @else {
+                    Registrar ajuste
+                  }
+                </button>
+              </div>
+            </form>
+          </article>
+        </section>
+      }
     </section>
+  `,
+  styles: `
+    .products-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(15, 23, 42, 0.28);
+      backdrop-filter: blur(4px);
+    }
+
+    .products-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 61;
+      display: grid;
+      place-items: center;
+      padding: 1.25rem;
+    }
+
+    .products-modal__panel {
+      width: min(100%, 42rem);
+      max-height: calc(100vh - 2.5rem);
+      overflow-y: auto;
+      padding: 1.35rem;
+    }
+
+    .products-modal__panel--wide {
+      width: min(100%, 54rem);
+    }
+
+    .products-modal__header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .products-steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+    }
+
+    .products-step {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--text-muted);
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      min-height: 2.4rem;
+      padding: 0 0.95rem;
+    }
+
+    .products-step.is-active {
+      border-color: rgba(22, 138, 87, 0.16);
+      background: rgba(22, 138, 87, 0.08);
+      color: var(--primary-strong);
+    }
+
+    .products-modal__actions {
+      justify-content: space-between;
+    }
   `,
 })
 export class ProductsPageComponent {
@@ -465,6 +583,10 @@ export class ProductsPageComponent {
   protected readonly editingProductId = signal<number | null>(null);
   protected readonly editingCategoryId = signal<number | null>(null);
   protected readonly legacyNotice = signal<string | null>(null);
+  protected readonly productDialogOpen = signal(false);
+  protected readonly categoryDialogOpen = signal(false);
+  protected readonly adjustmentDialogOpen = signal(false);
+  protected readonly productStep = signal<'details' | 'pricing' | 'inventory'>('details');
 
   protected readonly trackedProductsCount = computed(
     () => this.products().filter((product) => product.track_stock).length,
@@ -553,29 +675,9 @@ export class ProductsPageComponent {
   }
 
   protected editProduct(product: Product): void {
-    this.editingProductId.set(product.id);
-    this.error.set(null);
-    this.adjustmentError.set(null);
-    this.productForm.patchValue({
-      name: product.name,
-      category_id: String(product.category?.id ?? ''),
-      sku: product.sku ?? '',
-      barcode: product.barcode ?? '',
-      sale_price: product.sale_price,
-      cost_price: product.cost_price,
-      tax_rate: product.tax_rate,
-      unit: product.unit,
-      track_stock: product.track_stock,
-      minimum_stock: product.minimum_stock,
-      initial_stock: 0,
-      description: product.description ?? '',
-      is_active: product.is_active,
-    });
-    this.adjustmentForm.reset({
-      quantity: 0,
-      reason: '',
-      notes: '',
-    });
+    this.fillProductForm(product);
+    this.productStep.set('details');
+    this.productDialogOpen.set(true);
   }
 
   protected resetProductForm(): void {
@@ -604,9 +706,21 @@ export class ProductsPageComponent {
     });
   }
 
+  protected openCreateProductDialog(): void {
+    this.resetProductForm();
+    this.productStep.set('details');
+    this.productDialogOpen.set(true);
+  }
+
+  protected closeProductDialog(): void {
+    this.productDialogOpen.set(false);
+    this.error.set(null);
+  }
+
   protected editCategory(category: ProductCategory): void {
     this.editingCategoryId.set(category.id);
     this.categoryError.set(null);
+    this.categoryDialogOpen.set(true);
     this.categoryForm.patchValue({
       name: category.name,
       description: category.description ?? '',
@@ -622,6 +736,59 @@ export class ProductsPageComponent {
       description: '',
       is_active: true,
     });
+  }
+
+  protected openCategoryDialog(): void {
+    this.resetCategoryForm();
+    this.categoryDialogOpen.set(true);
+  }
+
+  protected closeCategoryDialog(): void {
+    this.categoryDialogOpen.set(false);
+    this.categoryError.set(null);
+  }
+
+  protected openAdjustmentDialog(product: Product): void {
+    this.fillProductForm(product);
+    this.productDialogOpen.set(false);
+    this.adjustmentDialogOpen.set(true);
+    this.adjustmentError.set(null);
+    this.adjustmentForm.reset({
+      quantity: 0,
+      reason: '',
+      notes: '',
+    });
+  }
+
+  protected closeAdjustmentDialog(): void {
+    this.adjustmentDialogOpen.set(false);
+    this.adjustmentError.set(null);
+  }
+
+  protected setProductStep(step: 'details' | 'pricing' | 'inventory'): void {
+    this.productStep.set(step);
+  }
+
+  protected nextProductStep(): void {
+    if (this.productStep() === 'details') {
+      this.productStep.set('pricing');
+      return;
+    }
+
+    if (this.productStep() === 'pricing') {
+      this.productStep.set('inventory');
+    }
+  }
+
+  protected previousProductStep(): void {
+    if (this.productStep() === 'inventory') {
+      this.productStep.set('pricing');
+      return;
+    }
+
+    if (this.productStep() === 'pricing') {
+      this.productStep.set('details');
+    }
   }
 
   protected showInitialStockField(): boolean {
@@ -650,6 +817,7 @@ export class ProductsPageComponent {
         await this.api.createProduct(payload);
       }
 
+      this.productDialogOpen.set(false);
       this.resetProductForm();
       await this.loadProducts();
     } catch (error) {
@@ -677,6 +845,7 @@ export class ProductsPageComponent {
         await this.api.createCategory(payload);
       }
 
+      this.categoryDialogOpen.set(false);
       this.resetCategoryForm();
       await Promise.all([this.loadCategories(), this.loadProducts()]);
     } catch (error) {
@@ -706,6 +875,7 @@ export class ProductsPageComponent {
         notes: '',
       });
 
+      this.adjustmentDialogOpen.set(false);
       await this.loadProducts();
     } catch (error) {
       this.adjustmentError.set(resolveApiError(error));
@@ -835,6 +1005,27 @@ export class ProductsPageComponent {
     const normalized = value?.trim() ?? '';
 
     return normalized === '' ? null : normalized;
+  }
+
+  private fillProductForm(product: Product): void {
+    this.editingProductId.set(product.id);
+    this.error.set(null);
+    this.adjustmentError.set(null);
+    this.productForm.patchValue({
+      name: product.name,
+      category_id: String(product.category?.id ?? ''),
+      sku: product.sku ?? '',
+      barcode: product.barcode ?? '',
+      sale_price: product.sale_price,
+      cost_price: product.cost_price,
+      tax_rate: product.tax_rate,
+      unit: product.unit,
+      track_stock: product.track_stock,
+      minimum_stock: product.minimum_stock,
+      initial_stock: 0,
+      description: product.description ?? '',
+      is_active: product.is_active,
+    });
   }
 
   private applyLegacyPrefillFromQuery(): void {

@@ -38,10 +38,10 @@ import { SettingsApiService } from './settings.api';
       <header class="page-header">
         <div class="page-header__copy">
           <span class="page-kicker">Configuracion</span>
-          <h1 class="page-title">Empresa, defaults y dosificacion ya viven en el stack nuevo.</h1>
+          <h1 class="page-title">Negocio, preferencias operativas y configuracion fiscal.</h1>
           <p class="page-description">
-            Este modulo ahora centraliza perfil comercial, parametros operativos y la resolucion
-            fiscal activa para emitir facturas reales desde el POS nuevo.
+            Centraliza la informacion clave de la empresa, el comportamiento del sistema y la
+            configuracion necesaria para emitir comprobantes.
           </p>
         </div>
         <span class="pill">
@@ -147,11 +147,26 @@ import { SettingsApiService } from './settings.api';
           </article>
         }
 
+        <article class="surface stack">
+          <div class="settings-sections">
+            <button class="settings-section" type="button" [class.is-active]="settingsSection() === 'company'" (click)="setSettingsSection('company')">
+              Negocio
+            </button>
+            <button class="settings-section" type="button" [class.is-active]="settingsSection() === 'system'" (click)="setSettingsSection('system')">
+              Operacion
+            </button>
+            <button class="settings-section" type="button" [class.is-active]="settingsSection() === 'billing'" (click)="setSettingsSection('billing')">
+              Fiscal
+            </button>
+          </div>
+        </article>
+
         <section class="settings-layout" [formGroup]="form">
+          @if (settingsSection() === 'company') {
           <mat-card appearance="outlined" class="settings-card settings-card--wide">
             <mat-card-header>
-              <mat-card-title>Perfil de empresa</mat-card-title>
-              <mat-card-subtitle>Datos fiscales y comerciales principales.</mat-card-subtitle>
+              <mat-card-title>Datos del negocio</mat-card-title>
+              <mat-card-subtitle>Identidad comercial y datos principales de la empresa.</mat-card-subtitle>
             </mat-card-header>
 
             <mat-card-content class="stack">
@@ -230,11 +245,13 @@ import { SettingsApiService } from './settings.api';
               </div>
             </mat-card-content>
           </mat-card>
+          }
 
+          @if (settingsSection() === 'system') {
           <mat-card appearance="outlined" class="settings-card">
             <mat-card-header>
-              <mat-card-title>Parametros del sistema</mat-card-title>
-              <mat-card-subtitle>Defaults operativos para POS, stock e idioma.</mat-card-subtitle>
+              <mat-card-title>Preferencias operativas</mat-card-title>
+              <mat-card-subtitle>Moneda, idioma y reglas base del funcionamiento diario.</mat-card-subtitle>
             </mat-card-header>
 
             <mat-card-content class="stack">
@@ -301,16 +318,22 @@ import { SettingsApiService } from './settings.api';
               </mat-chip-set>
             </mat-card-content>
           </mat-card>
+          }
 
+          @if (settingsSection() === 'billing') {
           <mat-card appearance="outlined" class="settings-card settings-card--billing">
             <mat-card-header>
-              <mat-card-title>Facturacion y dosificacion</mat-card-title>
+              <mat-card-title>Comprobantes fiscales</mat-card-title>
               <mat-card-subtitle>
-                La venta con factura ya depende de una resolucion activa y trazable.
+                Resoluciones, numeracion y parametros necesarios para emitir facturas.
               </mat-card-subtitle>
             </mat-card-header>
 
             <mat-card-content class="stack">
+              <p class="muted">
+                Edita solo lo necesario. Si dejas un campo de texto vacio, se conserva el valor actual.
+              </p>
+
               <div class="settings-inline-actions">
                 @if (auth.isAdmin()) {
                   <button mat-stroked-button type="button" (click)="startNewTaxResolution()">
@@ -440,6 +463,7 @@ import { SettingsApiService } from './settings.api';
               </div>
             </mat-card-content>
           </mat-card>
+          }
         </section>
       }
     </section>
@@ -478,6 +502,28 @@ import { SettingsApiService } from './settings.api';
     .resolution-history__list {
       display: grid;
       gap: 1rem;
+    }
+
+    .settings-sections {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+    }
+
+    .settings-section {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 999px;
+      background: rgba(246, 249, 252, 0.95);
+      color: var(--text-muted);
+      font-weight: 700;
+      min-height: 2.8rem;
+      padding: 0 1rem;
+    }
+
+    .settings-section.is-active {
+      border-color: rgba(22, 138, 87, 0.26);
+      background: rgba(22, 138, 87, 0.1);
+      color: var(--primary-strong);
     }
 
     .settings-grid {
@@ -572,6 +618,8 @@ export class SettingsPageComponent {
   protected readonly successMessage = signal<string | null>(null);
   protected readonly legacyNotice = signal<string | null>(null);
   protected readonly settings = signal<BusinessSettings | null>(null);
+  protected readonly settingsSection = signal<'company' | 'system' | 'billing'>('company');
+  protected readonly taxResolutionCleared = signal(false);
 
   protected readonly documentTypes = [
     { value: 'ticket', label: 'Ticket' },
@@ -580,7 +628,7 @@ export class SettingsPageComponent {
   ];
 
   protected readonly form = this.fb.group({
-    legal_name: ['', [Validators.required]],
+    legal_name: [''],
     trade_name: [''],
     tax_id: [''],
     email: ['', [Validators.email]],
@@ -591,7 +639,7 @@ export class SettingsPageComponent {
     region: [''],
     billing_owner_name: [''],
     billing_address_reference: [''],
-    country_code: ['EC'],
+    country_code: [''],
     currency_code: ['USD', [Validators.required]],
     locale_code: ['es-EC', [Validators.required]],
     timezone: ['America/Guayaquil', [Validators.required]],
@@ -603,9 +651,9 @@ export class SettingsPageComponent {
     tax_resolution_name: [''],
     tax_authorization_number: [''],
     tax_series: [''],
-    invoice_number_start: [1],
-    invoice_number_end: [99999999],
-    next_invoice_number: [1],
+    invoice_number_start: [null as number | null],
+    invoice_number_end: [null as number | null],
+    next_invoice_number: [null as number | null],
     tax_starts_at: [''],
     tax_ends_at: [''],
     tax_technical_key: [''],
@@ -672,19 +720,24 @@ export class SettingsPageComponent {
     return this.documentTypes.find((option) => option.value === value)?.label ?? value;
   }
 
+  protected setSettingsSection(section: 'company' | 'system' | 'billing'): void {
+    this.settingsSection.set(section);
+  }
+
   protected loadTaxResolution(resolution: TaxResolution): void {
+    this.taxResolutionCleared.set(false);
     this.form.patchValue({
       tax_resolution_id: String(resolution.id),
-      tax_resolution_name: resolution.name,
-      tax_authorization_number: resolution.authorization_number,
-      tax_series: resolution.series ?? '',
-      invoice_number_start: resolution.invoice_number_start,
-      invoice_number_end: resolution.invoice_number_end,
-      next_invoice_number: resolution.next_invoice_number,
-      tax_starts_at: this.toDateTimeLocalValue(resolution.starts_at),
-      tax_ends_at: this.toDateTimeLocalValue(resolution.ends_at),
-      tax_technical_key: resolution.technical_key ?? '',
-      tax_legend: resolution.legend ?? '',
+      tax_resolution_name: '',
+      tax_authorization_number: '',
+      tax_series: '',
+      invoice_number_start: null,
+      invoice_number_end: null,
+      next_invoice_number: null,
+      tax_starts_at: '',
+      tax_ends_at: '',
+      tax_technical_key: '',
+      tax_legend: '',
     });
   }
 
@@ -693,6 +746,7 @@ export class SettingsPageComponent {
       return;
     }
 
+    this.taxResolutionCleared.set(false);
     this.form.patchValue({
       tax_resolution_id: '',
       tax_resolution_name: '',
@@ -713,6 +767,7 @@ export class SettingsPageComponent {
       return;
     }
 
+    this.taxResolutionCleared.set(true);
     this.form.patchValue({
       tax_resolution_id: '',
       tax_resolution_name: '',
@@ -730,8 +785,9 @@ export class SettingsPageComponent {
 
   protected remainingTaxNumbers(): number {
     const raw = this.form.getRawValue();
-    const end = Number(raw.invoice_number_end ?? 0);
-    const next = Number(raw.next_invoice_number ?? 0);
+    const currentResolution = this.selectedTaxResolution();
+    const end = Number(raw.invoice_number_end ?? currentResolution?.invoice_number_end ?? 0);
+    const next = Number(raw.next_invoice_number ?? currentResolution?.next_invoice_number ?? 0);
 
     if (!Number.isFinite(end) || !Number.isFinite(next)) {
       return 0;
@@ -759,38 +815,50 @@ export class SettingsPageComponent {
   }
 
   private applySettingsToForm(settings: BusinessSettings): void {
-    this.form.patchValue({
-      legal_name: settings.company_profile.legal_name,
-      trade_name: settings.company_profile.trade_name ?? '',
-      tax_id: settings.company_profile.tax_id ?? '',
-      email: settings.company_profile.email ?? '',
-      phone: settings.company_profile.phone ?? '',
-      website: settings.company_profile.website ?? '',
-      address_line: settings.company_profile.address_line ?? '',
-      city: settings.company_profile.city ?? '',
-      region: settings.company_profile.region ?? '',
-      billing_owner_name: settings.company_profile.metadata?.billing_owner_name ?? '',
-      billing_address_reference: settings.company_profile.metadata?.billing_address_reference ?? '',
-      country_code: settings.company_profile.country_code ?? 'EC',
+    this.taxResolutionCleared.set(false);
+    this.form.reset({
+      legal_name: '',
+      trade_name: '',
+      tax_id: '',
+      email: '',
+      phone: '',
+      website: '',
+      address_line: '',
+      city: '',
+      region: '',
+      billing_owner_name: '',
+      billing_address_reference: '',
+      country_code: '',
       currency_code: settings.system_settings.currency_code,
       locale_code: settings.system_settings.locale_code,
       timezone: settings.system_settings.timezone,
       tax_included_prices: settings.system_settings.tax_included_prices,
       allow_negative_stock: settings.system_settings.allow_negative_stock,
       default_document_type: settings.system_settings.default_document_type,
-      invoice_footer: settings.system_settings.invoice_footer ?? '',
+      invoice_footer: '',
+      tax_resolution_id: settings.active_tax_resolution ? String(settings.active_tax_resolution.id) : '',
+      tax_resolution_name: '',
+      tax_authorization_number: '',
+      tax_series: '',
+      invoice_number_start: null,
+      invoice_number_end: null,
+      next_invoice_number: null,
+      tax_starts_at: '',
+      tax_ends_at: '',
+      tax_technical_key: '',
+      tax_legend: '',
     });
-
-    if (settings.active_tax_resolution) {
-      this.loadTaxResolution(settings.active_tax_resolution);
-      return;
-    }
-
-    this.clearTaxResolutionSelection();
   }
 
   private buildPayload(): UpdateBusinessSettingsPayload {
     const raw = this.form.getRawValue();
+    const settings = this.settings();
+
+    if (!settings) {
+      throw new Error('Settings not loaded');
+    }
+
+    const currentResolution = this.selectedTaxResolution();
     const hasTaxResolutionDraft = [
       raw.tax_resolution_name,
       raw.tax_authorization_number,
@@ -802,25 +870,39 @@ export class SettingsPageComponent {
     ].some((value) => this.nullableText(value) !== null);
 
     const numericResolutionData =
-      Number(raw.invoice_number_start ?? 0) > 1 ||
-      Number(raw.invoice_number_end ?? 0) > 1 ||
-      Number(raw.next_invoice_number ?? 0) > 1;
+      Number(raw.invoice_number_start ?? currentResolution?.invoice_number_start ?? 0) > 1 ||
+      Number(raw.invoice_number_end ?? currentResolution?.invoice_number_end ?? 0) > 1 ||
+      Number(raw.next_invoice_number ?? currentResolution?.next_invoice_number ?? 0) > 1;
+
+    const shouldPersistResolution =
+      !this.taxResolutionCleared() &&
+      (currentResolution !== null || hasTaxResolutionDraft || numericResolutionData);
 
     return {
       company_profile: {
-        legal_name: raw.legal_name?.trim() ?? '',
-        trade_name: this.nullableText(raw.trade_name),
-        tax_id: this.nullableText(raw.tax_id),
-        email: this.nullableText(raw.email),
-        phone: this.nullableText(raw.phone),
-        website: this.nullableText(raw.website),
-        address_line: this.nullableText(raw.address_line),
-        city: this.nullableText(raw.city),
-        region: this.nullableText(raw.region),
-        country_code: this.nullableCountry(raw.country_code),
+        legal_name:
+          this.nullableText(raw.legal_name) ?? settings.company_profile.legal_name,
+        trade_name:
+          this.nullableText(raw.trade_name) ?? settings.company_profile.trade_name,
+        tax_id: this.nullableText(raw.tax_id) ?? settings.company_profile.tax_id,
+        email: this.nullableText(raw.email) ?? settings.company_profile.email,
+        phone: this.nullableText(raw.phone) ?? settings.company_profile.phone,
+        website: this.nullableText(raw.website) ?? settings.company_profile.website,
+        address_line:
+          this.nullableText(raw.address_line) ?? settings.company_profile.address_line,
+        city: this.nullableText(raw.city) ?? settings.company_profile.city,
+        region: this.nullableText(raw.region) ?? settings.company_profile.region,
+        country_code:
+          this.nullableCountry(raw.country_code) ?? settings.company_profile.country_code,
         metadata: {
-          billing_owner_name: this.nullableText(raw.billing_owner_name),
-          billing_address_reference: this.nullableText(raw.billing_address_reference),
+          billing_owner_name:
+            this.nullableText(raw.billing_owner_name) ??
+            settings.company_profile.metadata?.billing_owner_name ??
+            null,
+          billing_address_reference:
+            this.nullableText(raw.billing_address_reference) ??
+            settings.company_profile.metadata?.billing_address_reference ??
+            null,
         },
       },
       system_settings: {
@@ -833,22 +915,54 @@ export class SettingsPageComponent {
         invoice_footer: this.nullableText(raw.invoice_footer),
       },
       active_tax_resolution:
-        hasTaxResolutionDraft || numericResolutionData
+        shouldPersistResolution
           ? {
-              ...(raw.tax_resolution_id ? { id: Number(raw.tax_resolution_id) } : {}),
-              name: raw.tax_resolution_name?.trim() ?? '',
-              authorization_number: raw.tax_authorization_number?.trim() ?? '',
-              series: this.nullableText(raw.tax_series),
-              invoice_number_start: Number(raw.invoice_number_start ?? 1),
-              invoice_number_end: Number(raw.invoice_number_end ?? 1),
-              next_invoice_number: Number(raw.next_invoice_number ?? 1),
-              starts_at: raw.tax_starts_at?.trim() ?? '',
-              ends_at: this.nullableText(raw.tax_ends_at),
-              technical_key: this.nullableText(raw.tax_technical_key),
-              legend: this.nullableText(raw.tax_legend),
+              ...(currentResolution?.id ? { id: currentResolution.id } : {}),
+              name: this.nullableText(raw.tax_resolution_name) ?? currentResolution?.name ?? '',
+              authorization_number:
+                this.nullableText(raw.tax_authorization_number) ??
+                currentResolution?.authorization_number ??
+                '',
+              series: this.nullableText(raw.tax_series) ?? currentResolution?.series ?? null,
+              invoice_number_start: Number(
+                raw.invoice_number_start ?? currentResolution?.invoice_number_start ?? 1,
+              ),
+              invoice_number_end: Number(
+                raw.invoice_number_end ?? currentResolution?.invoice_number_end ?? 1,
+              ),
+              next_invoice_number: Number(
+                raw.next_invoice_number ?? currentResolution?.next_invoice_number ?? 1,
+              ),
+              starts_at:
+                this.nullableText(raw.tax_starts_at) ?? currentResolution?.starts_at ?? '',
+              ends_at:
+                this.nullableText(raw.tax_ends_at) ?? currentResolution?.ends_at ?? null,
+              technical_key:
+                this.nullableText(raw.tax_technical_key) ?? currentResolution?.technical_key ?? null,
+              legend: this.nullableText(raw.tax_legend) ?? currentResolution?.legend ?? null,
             }
           : null,
     };
+  }
+
+  private selectedTaxResolution(): TaxResolution | null {
+    if (this.taxResolutionCleared()) {
+      return null;
+    }
+
+    const settings = this.settings();
+
+    if (!settings) {
+      return null;
+    }
+
+    const selectedId = Number(this.form.getRawValue().tax_resolution_id || 0);
+
+    if (selectedId > 0) {
+      return settings.tax_resolutions.find((resolution) => resolution.id === selectedId) ?? null;
+    }
+
+    return settings.active_tax_resolution ?? null;
   }
 
   private syncFormAccess(): void {

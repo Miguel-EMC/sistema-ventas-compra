@@ -56,7 +56,7 @@ import { CustomersApiService } from './customers.api';
         </article>
       </section>
 
-      <section class="admin-layout">
+      <section class="stack">
         <article class="surface stack">
           <div class="toolbar">
             <div class="field field--search">
@@ -73,7 +73,7 @@ import { CustomersApiService } from './customers.api';
             <div class="cta-row">
               <button class="btn" type="button" (click)="loadCustomers()">Refrescar</button>
               @if (isAdmin()) {
-                <button class="btn btn--ghost" type="button" (click)="resetForm()">Nuevo</button>
+                <button class="btn btn--primary" type="button" (click)="openCreateDialog()">Nuevo cliente</button>
               }
             </div>
           </div>
@@ -85,7 +85,7 @@ import { CustomersApiService } from './customers.api';
           @if (customers().length === 0) {
             <p class="muted">
               Todavia no hay clientes migrados en la plataforma nueva. Puedes crear el primero
-              desde el formulario lateral.
+              desde el flujo de alta.
             </p>
           } @else {
             <div class="table-list">
@@ -123,106 +123,196 @@ import { CustomersApiService } from './customers.api';
             </div>
           }
         </article>
+      </section>
 
-        @if (isAdmin()) {
-          <article class="surface stack">
-            <div class="page-header">
+      @if (!isAdmin()) {
+        <article class="surface stack">
+          <span class="page-kicker">Solo lectura</span>
+          <h2 class="page-title">Tu rol puede consultar la base de clientes.</h2>
+          <p class="page-description">
+            La administracion de altas y cambios queda reservada a perfiles de gestion, pero la
+            consulta ya se puede hacer desde este frontend nuevo.
+          </p>
+        </article>
+      }
+
+      @if (isAdmin() && customerDialogOpen()) {
+        <div class="customers-modal-backdrop" (click)="closeDialog()"></div>
+        <section class="customers-modal" role="dialog" aria-modal="true">
+          <article class="surface customers-modal__panel">
+            <header class="customers-modal__header">
               <div class="page-header__copy">
-                <span class="page-kicker">Formulario</span>
-                <h2 class="page-title">
-                  @if (editingId()) {
-                    Editar cliente
-                  } @else {
-                    Crear cliente
-                  }
-                </h2>
+                <span class="page-kicker">Cliente</span>
+                <h2 class="page-title">{{ editingId() ? 'Editar cliente' : 'Nuevo cliente' }}</h2>
                 <p class="page-description">
-                  Este bloque deja listo el dominio de clientes para relacionarlo despues con
-                  facturacion, borradores de venta y analitica comercial.
+                  Separa el alta del listado para mantener una experiencia mas clara.
                 </p>
               </div>
+              <button class="btn btn--ghost" type="button" (click)="closeDialog()">Cerrar</button>
+            </header>
+
+            <div class="customers-steps">
+              <button
+                class="customers-step"
+                type="button"
+                [class.is-active]="customerStep() === 'identity'"
+                (click)="setCustomerStep('identity')"
+              >
+                Identidad
+              </button>
+              <button
+                class="customers-step"
+                type="button"
+                [class.is-active]="customerStep() === 'contact'"
+                (click)="setCustomerStep('contact')"
+              >
+                Contacto
+              </button>
             </div>
 
             <form class="form-grid" [formGroup]="form" (ngSubmit)="submit()">
-              <div class="split">
-                <div class="field">
-                  <label for="customer-name">Nombre</label>
-                  <input id="customer-name" type="text" formControlName="name" />
+              @if (customerStep() === 'identity') {
+                <div class="split">
+                  <div class="field">
+                    <label for="customer-name">Nombre</label>
+                    <input id="customer-name" type="text" formControlName="name" />
+                  </div>
+
+                  <div class="field">
+                    <label for="customer-document-type">Tipo de documento</label>
+                    <select id="customer-document-type" formControlName="document_type">
+                      <option value="">Sin documento</option>
+                      @for (option of documentTypes; track option.value) {
+                        <option [value]="option.value">{{ option.label }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+
+                <div class="split">
+                  <div class="field">
+                    <label for="customer-document-number">Numero de documento</label>
+                    <input id="customer-document-number" type="text" formControlName="document_number" />
+                  </div>
+
+                  <div class="field">
+                    <label for="customer-active">Estado</label>
+                    <select id="customer-active" formControlName="is_active">
+                      <option [ngValue]="true">Activo</option>
+                      <option [ngValue]="false">Inactivo</option>
+                    </select>
+                  </div>
+                </div>
+              }
+
+              @if (customerStep() === 'contact') {
+                <div class="split">
+                  <div class="field">
+                    <label for="customer-email">Correo</label>
+                    <input id="customer-email" type="email" formControlName="email" />
+                  </div>
+
+                  <div class="field">
+                    <label for="customer-phone">Telefono</label>
+                    <input id="customer-phone" type="text" formControlName="phone" />
+                  </div>
                 </div>
 
                 <div class="field">
-                  <label for="customer-document-type">Tipo de documento</label>
-                  <select id="customer-document-type" formControlName="document_type">
-                    <option value="">Sin documento</option>
-                    @for (option of documentTypes; track option.value) {
-                      <option [value]="option.value">{{ option.label }}</option>
-                    }
-                  </select>
+                  <label for="customer-address">Direccion</label>
+                  <textarea id="customer-address" formControlName="address"></textarea>
                 </div>
-              </div>
-
-              <div class="split">
-                <div class="field">
-                  <label for="customer-document-number">Numero de documento</label>
-                  <input id="customer-document-number" type="text" formControlName="document_number" />
-                </div>
-
-                <div class="field">
-                  <label for="customer-email">Correo</label>
-                  <input id="customer-email" type="email" formControlName="email" />
-                </div>
-              </div>
-
-              <div class="split">
-                <div class="field">
-                  <label for="customer-phone">Telefono</label>
-                  <input id="customer-phone" type="text" formControlName="phone" />
-                </div>
-
-                <div class="field">
-                  <label for="customer-active">Estado</label>
-                  <select id="customer-active" formControlName="is_active">
-                    <option [ngValue]="true">Activo</option>
-                    <option [ngValue]="false">Inactivo</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="field">
-                <label for="customer-address">Direccion</label>
-                <textarea id="customer-address" formControlName="address"></textarea>
-              </div>
+              }
 
               @if (error()) {
                 <p class="alert alert--danger">{{ error() }}</p>
               }
 
-              <div class="cta-row">
-                <button class="btn btn--primary" type="submit" [disabled]="saving()">
-                  @if (saving()) {
-                    Guardando...
-                  } @else if (editingId()) {
-                    Actualizar cliente
-                  } @else {
-                    Crear cliente
-                  }
+              <div class="cta-row customers-modal__actions">
+                <button class="btn btn--ghost" type="button" (click)="previousCustomerStep()" [disabled]="customerStep() === 'identity'">
+                  Atras
                 </button>
-                <button class="btn btn--ghost" type="button" (click)="resetForm()">Limpiar</button>
+                @if (customerStep() !== 'contact') {
+                  <button class="btn" type="button" (click)="nextCustomerStep()">Siguiente</button>
+                } @else {
+                  <button class="btn btn--primary" type="submit" [disabled]="saving()">
+                    @if (saving()) {
+                      Guardando...
+                    } @else if (editingId()) {
+                      Actualizar cliente
+                    } @else {
+                      Crear cliente
+                    }
+                  </button>
+                }
               </div>
             </form>
           </article>
-        } @else {
-          <article class="surface stack">
-            <span class="page-kicker">Solo lectura</span>
-            <h2 class="page-title">Tu rol puede consultar la base de clientes.</h2>
-            <p class="page-description">
-              La administracion de altas y cambios queda reservada a perfiles de gestion, pero la
-              consulta ya se puede hacer desde este frontend nuevo.
-            </p>
-          </article>
-        }
-      </section>
+        </section>
+      }
     </section>
+  `,
+  styles: `
+    .customers-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(15, 23, 42, 0.28);
+      backdrop-filter: blur(4px);
+    }
+
+    .customers-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 61;
+      display: grid;
+      place-items: center;
+      padding: 1.25rem;
+    }
+
+    .customers-modal__panel {
+      width: min(100%, 44rem);
+      max-height: calc(100vh - 2.5rem);
+      overflow-y: auto;
+      padding: 1.35rem;
+    }
+
+    .customers-modal__header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .customers-steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+    }
+
+    .customers-step {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--text-muted);
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      min-height: 2.4rem;
+      padding: 0 0.95rem;
+    }
+
+    .customers-step.is-active {
+      border-color: rgba(22, 138, 87, 0.16);
+      background: rgba(22, 138, 87, 0.08);
+      color: var(--primary-strong);
+    }
+
+    .customers-modal__actions {
+      justify-content: space-between;
+    }
   `,
 })
 export class CustomersPageComponent {
@@ -240,6 +330,8 @@ export class CustomersPageComponent {
   protected readonly error = signal<string | null>(null);
   protected readonly editingId = signal<number | null>(null);
   protected readonly legacyNotice = signal<string | null>(null);
+  protected readonly customerDialogOpen = signal(false);
+  protected readonly customerStep = signal<'identity' | 'contact'>('identity');
 
   protected readonly activeCustomersCount = computed(
     () => this.customers().filter((customer) => customer.is_active).length,
@@ -286,17 +378,9 @@ export class CustomersPageComponent {
   }
 
   protected editCustomer(customer: BusinessPartner): void {
-    this.editingId.set(customer.id);
-    this.error.set(null);
-    this.form.patchValue({
-      name: customer.name,
-      document_type: customer.document_type ?? '',
-      document_number: customer.document_number ?? '',
-      email: customer.email ?? '',
-      phone: customer.phone ?? '',
-      address: customer.address ?? '',
-      is_active: customer.is_active,
-    });
+    this.fillCustomerForm(customer);
+    this.customerStep.set('identity');
+    this.customerDialogOpen.set(true);
   }
 
   protected resetForm(): void {
@@ -311,6 +395,33 @@ export class CustomersPageComponent {
       address: '',
       is_active: true,
     });
+  }
+
+  protected openCreateDialog(): void {
+    this.resetForm();
+    this.customerStep.set('identity');
+    this.customerDialogOpen.set(true);
+  }
+
+  protected closeDialog(): void {
+    this.customerDialogOpen.set(false);
+    this.error.set(null);
+  }
+
+  protected setCustomerStep(step: 'identity' | 'contact'): void {
+    this.customerStep.set(step);
+  }
+
+  protected nextCustomerStep(): void {
+    if (this.customerStep() === 'identity') {
+      this.customerStep.set('contact');
+    }
+  }
+
+  protected previousCustomerStep(): void {
+    if (this.customerStep() === 'contact') {
+      this.customerStep.set('identity');
+    }
   }
 
   protected async submit(): Promise<void> {
@@ -331,6 +442,7 @@ export class CustomersPageComponent {
         await this.api.create(payload);
       }
 
+      this.customerDialogOpen.set(false);
       this.resetForm();
       await this.loadCustomers();
     } catch (error) {
@@ -384,6 +496,20 @@ export class CustomersPageComponent {
     const normalized = value?.trim() ?? '';
 
     return normalized === '' ? null : normalized;
+  }
+
+  private fillCustomerForm(customer: BusinessPartner): void {
+    this.editingId.set(customer.id);
+    this.error.set(null);
+    this.form.patchValue({
+      name: customer.name,
+      document_type: customer.document_type ?? '',
+      document_number: customer.document_number ?? '',
+      email: customer.email ?? '',
+      phone: customer.phone ?? '',
+      address: customer.address ?? '',
+      is_active: customer.is_active,
+    });
   }
 
   private applyLegacyPrefillFromQuery(): void {

@@ -1,16 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSelectModule } from '@angular/material/select';
 import { resolveApiError } from '../../core/http/resolve-api-error';
 import { CashApiService } from './cash.api';
 import {
@@ -23,31 +14,19 @@ import {
 
 @Component({
   selector: 'app-cash-page',
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatCardModule,
-    MatChipsModule,
-    MatDividerModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatInputModule,
-    MatListModule,
-    MatProgressBarModule,
-    MatSelectModule,
-  ],
+  imports: [ReactiveFormsModule, MatProgressBarModule],
   template: `
     <section class="stack cash-page">
       <header class="page-header">
         <div class="page-header__copy">
           <span class="page-kicker">Caja</span>
-          <h1 class="page-title">Apertura, cierre y movimientos manuales de caja.</h1>
+          <h1 class="page-title">Control diario de apertura, balance y movimientos.</h1>
           <p class="page-description">
-            Este modulo ya cubre la operación diaria del POS nuevo: abrir caja, registrar gastos o
-            entradas manuales y cerrar la sesión con trazabilidad completa.
+            La vista principal queda enfocada en estado actual, historial reciente y acciones
+            puntuales. Las operaciones sensibles se registran en flujos separados.
           </p>
         </div>
-        <span class="pill">Caja + gastos + ingresos manuales</span>
+        <span class="pill">Operacion diaria</span>
       </header>
 
       @if (legacyNotice()) {
@@ -117,251 +96,180 @@ import {
         </article>
       </section>
 
-      <section class="cash-layout">
-        <mat-card appearance="outlined" class="cash-card">
-          <mat-card-header>
-            <mat-card-title>
+      <article class="surface stack cash-control">
+        <div class="cash-control__header">
+          <div class="page-header__copy">
+            <span class="page-kicker">Operacion actual</span>
+            <h2 class="cash-section__title">
               @if (currentSession()) {
+                Caja activa
+              } @else {
+                Caja pendiente de apertura
+              }
+            </h2>
+            <p class="page-description">
+              @if (currentSession(); as session) {
+                {{ session.register?.name || 'Caja actual' }} abierta el
+                {{ formatDateTime(session.opened_at) }} por
+                {{ session.opened_by?.name || 'usuario actual' }}.
+              } @else {
+                Abre una caja antes de registrar entradas, gastos o cierres del turno.
+              }
+            </p>
+          </div>
+
+          <div class="cta-row">
+            <button class="btn btn--ghost" type="button" (click)="load()">Refrescar</button>
+            @if (currentSession()) {
+              <button class="btn" type="button" (click)="openMovementDialog()">Nuevo movimiento</button>
+              <button class="btn btn--primary" type="button" (click)="openSessionDialog()">
                 Cerrar caja
-              } @else {
+              </button>
+            } @else {
+              <button class="btn btn--primary" type="button" (click)="openSessionDialog()">
                 Abrir caja
-              }
-            </mat-card-title>
-            <mat-card-subtitle>
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (currentSession(); as session) {
+          <div class="cash-state-grid">
+            <article class="cash-state-card">
+              <span class="metric-card__label">Caja</span>
+              <strong>{{ session.register?.name || 'Caja actual' }}</strong>
+              <small>{{ session.register?.location || 'Sin ubicacion registrada' }}</small>
+            </article>
+
+            <article class="cash-state-card">
+              <span class="metric-card__label">Apertura</span>
+              <strong>{{ formatCurrency(session.opening_amount) }}</strong>
+              <small>{{ formatDateTime(session.opened_at) }}</small>
+            </article>
+
+            <article class="cash-state-card">
+              <span class="metric-card__label">Movimientos</span>
+              <strong>{{ currentSessionMovements().length }}</strong>
+              <small>{{ formatCurrency(manualIncomeTotal()) }} en entradas manuales</small>
+            </article>
+
+            <article class="cash-state-card">
+              <span class="metric-card__label">Balance</span>
+              <strong>{{ formatCurrency(session.cash_balance) }}</strong>
+              <small>{{ formatCurrency(manualExpenseTotal()) }} en gastos manuales</small>
+            </article>
+          </div>
+        } @else {
+          <article class="cash-empty-state">
+            <strong>No hay una caja operando en este momento.</strong>
+            <p class="muted">
+              Mantuvimos la pantalla principal limpia para consulta. La apertura y el cierre ahora
+              viven en un flujo separado.
+            </p>
+          </article>
+        }
+      </article>
+
+      <section class="cash-layout">
+        <article class="surface stack">
+          <div class="cash-block__header">
+            <div>
+              <span class="page-kicker">Movimientos manuales</span>
+              <h2 class="cash-section__title">Historial reciente</h2>
+            </div>
+
+            @if (currentSession()) {
+              <button class="btn btn--ghost" type="button" (click)="openMovementDialog()">
+                Registrar
+              </button>
+            }
+          </div>
+
+          @if (displayedMovements().length === 0) {
+            <p class="muted">
               @if (currentSession()) {
-                {{ currentSession()?.register?.name || 'Caja actual' }}
+                Esta caja todavia no tiene entradas o salidas manuales registradas.
               } @else {
-                Selecciona la caja y registra el monto inicial.
+                Aun no hay movimientos manuales disponibles para mostrar.
               }
-            </mat-card-subtitle>
-          </mat-card-header>
-
-          <mat-card-content class="stack">
-            @if (currentSession(); as session) {
-              <div class="cash-summary">
-                <mat-chip-set>
-                  <mat-chip>Apertura {{ formatCurrency(session.opening_amount) }}</mat-chip>
-                  <mat-chip>Ventas {{ formatCurrency(session.sales_total) }}</mat-chip>
-                  <mat-chip>Entradas {{ formatCurrency(manualIncomeTotal()) }}</mat-chip>
-                  <mat-chip>Gastos {{ formatCurrency(manualExpenseTotal()) }}</mat-chip>
-                  <mat-chip highlighted>Balance {{ formatCurrency(session.cash_balance) }}</mat-chip>
-                </mat-chip-set>
-
-                <p class="muted">
-                  Abierta el {{ formatDateTime(session.opened_at) }} por
-                  {{ session.opened_by?.name || 'usuario actual' }}.
-                </p>
-              </div>
-
-              <form class="cash-form" [formGroup]="closeForm" (ngSubmit)="closeSession()">
-                <mat-form-field appearance="outline">
-                  <mat-label>Monto de cierre</mat-label>
-                  <input matInput type="number" min="0" step="0.01" formControlName="closing_amount" />
-                </mat-form-field>
-
-                <mat-form-field appearance="outline">
-                  <mat-label>Notas de cierre</mat-label>
-                  <textarea matInput rows="3" formControlName="notes"></textarea>
-                </mat-form-field>
-
-                <div class="cta-row">
-                  <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
-                    Cerrar caja
-                  </button>
-                </div>
-              </form>
-            } @else {
-              <form class="cash-form" [formGroup]="openForm" (ngSubmit)="openSession()">
-                <mat-form-field appearance="outline">
-                  <mat-label>Caja</mat-label>
-                  <mat-select formControlName="cash_register_id">
-                    @for (register of registers(); track register.id) {
-                      <mat-option [value]="register.id">
-                        {{ register.name }}
-                        @if (register.location) {
-                          · {{ register.location }}
-                        }
-                      </mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline">
-                  <mat-label>Monto de apertura</mat-label>
-                  <input matInput type="number" min="0" step="0.01" formControlName="opening_amount" />
-                </mat-form-field>
-
-                <mat-form-field appearance="outline">
-                  <mat-label>Notas</mat-label>
-                  <textarea matInput rows="3" formControlName="notes"></textarea>
-                </mat-form-field>
-
-                <div class="cta-row">
-                  <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
-                    Abrir caja
-                  </button>
-                </div>
-              </form>
-            }
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card appearance="outlined" class="cash-card">
-          <mat-card-header>
-            <mat-card-title>Movimientos manuales</mat-card-title>
-            <mat-card-subtitle>Equivalente nuevo de entradas y salidas del legacy.</mat-card-subtitle>
-          </mat-card-header>
-
-          <mat-card-content class="stack">
-            @if (currentSession(); as session) {
-              <mat-chip-set>
-                <mat-chip>{{ session.register?.name || 'Caja actual' }}</mat-chip>
-                <mat-chip>{{ currentSessionMovements().length }} movimiento(s)</mat-chip>
-                <mat-chip highlighted>{{ formatCurrency(session.cash_balance) }}</mat-chip>
-              </mat-chip-set>
-
-              <form class="cash-form" [formGroup]="movementForm" (ngSubmit)="saveMovement()">
-                <div class="cash-form-grid">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Tipo</mat-label>
-                    <mat-select
-                      formControlName="type"
-                      (selectionChange)="onMovementTypeChange($event.value)"
-                    >
-                      @for (option of movementTypeOptions; track option.value) {
-                        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Categoria</mat-label>
-                    <mat-select formControlName="category">
-                      @for (option of currentCategoryOptions(); track option.value) {
-                        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-                </div>
-
-                <div class="cash-form-grid">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Monto</mat-label>
-                    <input matInput type="number" min="0.01" step="0.01" formControlName="amount" />
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Fecha y hora</mat-label>
-                    <input matInput type="datetime-local" formControlName="occurred_at" />
-                  </mat-form-field>
-                </div>
-
-                <mat-form-field appearance="outline">
-                  <mat-label>Detalle</mat-label>
-                  <textarea matInput rows="3" formControlName="notes"></textarea>
-                </mat-form-field>
-
-                <div class="cta-row">
-                  @if (editingMovementId()) {
-                    <button mat-stroked-button type="button" (click)="cancelMovementEdit()" [disabled]="saving()">
-                      Cancelar edicion
-                    </button>
-                  }
-                  <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
-                    @if (editingMovementId()) {
-                      Actualizar movimiento
-                    } @else {
-                      Registrar movimiento
-                    }
-                  </button>
-                </div>
-              </form>
-            } @else {
-              <p class="muted">
-                Abre una caja para registrar gastos o entradas manuales y reemplazar el modulo legacy de cuentas.
-              </p>
-            }
-
-            <mat-divider></mat-divider>
-
-            <div class="stack">
-              <span class="page-kicker">Historial manual</span>
-
-              @if (movements().length === 0) {
-                <p class="muted">Todavia no hay movimientos manuales registrados.</p>
-              } @else {
-                <div class="cash-movement-list">
-                  @for (movement of movements(); track movement.id) {
-                    <article class="cash-movement-item">
-                      <div class="cash-history-item__content">
-                        <div class="cash-movement-item__head">
-                          <strong>{{ movement.notes || labelForMovementCategory(movement.category) }}</strong>
-                          <mat-chip-set>
-                            <mat-chip
-                              [class.cash-chip-income]="movement.type === 'income'"
-                              [class.cash-chip-expense]="movement.type === 'expense'"
-                            >
-                              {{ labelForMovementType(movement.type) }}
-                            </mat-chip>
-                            <mat-chip>{{ labelForMovementCategory(movement.category) }}</mat-chip>
-                          </mat-chip-set>
-                        </div>
-                        <span>
-                          {{ formatDateTime(movement.occurred_at) }}
-                          @if (movement.user?.name) {
-                            · {{ movement.user?.name }}
-                          }
-                        </span>
-                        <small>
-                          {{ movement.cash_session?.register_name || 'Caja sin nombre' }}
-                          @if (movement.cash_session?.status) {
-                            · {{ movement.cash_session?.status === 'open' ? 'Sesion abierta' : 'Sesion cerrada' }}
-                          }
-                        </small>
-                      </div>
-
-                      <div class="cash-history-item__meta">
-                        <strong
-                          [class.cash-amount-income]="movement.type === 'income'"
-                          [class.cash-amount-expense]="movement.type === 'expense'"
+            </p>
+          } @else {
+            <div class="cash-list">
+              @for (movement of displayedMovements(); track movement.id) {
+                <article class="cash-item">
+                  <div class="cash-item__copy">
+                    <div class="cash-item__head">
+                      <strong>{{ movement.notes || labelForMovementCategory(movement.category) }}</strong>
+                      <div class="badge-row">
+                        <span
+                          class="pill"
+                          [class.cash-pill-income]="movement.type === 'income'"
+                          [class.cash-pill-expense]="movement.type === 'expense'"
                         >
-                          {{ formatSignedAmount(movement) }}
-                        </strong>
-
-                        @if (movement.can_manage) {
-                          <div class="cta-row">
-                            <button mat-stroked-button type="button" (click)="editMovement(movement)" [disabled]="saving()">
-                              Editar
-                            </button>
-                            <button mat-stroked-button type="button" (click)="deleteMovement(movement)" [disabled]="saving()">
-                              Eliminar
-                            </button>
-                          </div>
-                        }
+                          {{ labelForMovementType(movement.type) }}
+                        </span>
+                        <span class="pill pill--muted">
+                          {{ labelForMovementCategory(movement.category) }}
+                        </span>
                       </div>
-                    </article>
-                  }
-                </div>
+                    </div>
+
+                    <span>
+                      {{ formatDateTime(movement.occurred_at) }}
+                      @if (movement.user?.name) {
+                        · {{ movement.user?.name }}
+                      }
+                    </span>
+                    <small>
+                      {{ movement.cash_session?.register_name || 'Caja sin nombre' }}
+                      @if (movement.cash_session?.status) {
+                        ·
+                        {{ movement.cash_session?.status === 'open' ? 'Sesion abierta' : 'Sesion cerrada' }}
+                      }
+                    </small>
+                  </div>
+
+                  <div class="cash-item__meta">
+                    <strong
+                      class="cash-item__amount"
+                      [class.cash-item__amount--income]="movement.type === 'income'"
+                      [class.cash-item__amount--expense]="movement.type === 'expense'"
+                    >
+                      {{ formatSignedAmount(movement) }}
+                    </strong>
+
+                    @if (movement.can_manage) {
+                      <div class="cta-row">
+                        <button class="btn btn--ghost" type="button" (click)="editMovement(movement)">
+                          Editar
+                        </button>
+                        <button class="btn" type="button" (click)="deleteMovement(movement)" [disabled]="saving()">
+                          Eliminar
+                        </button>
+                      </div>
+                    }
+                  </div>
+                </article>
               }
             </div>
-          </mat-card-content>
-        </mat-card>
-      </section>
+          }
+        </article>
 
-      <mat-card appearance="outlined" class="cash-card">
-        <mat-card-header>
-          <mat-card-title>Sesiones recientes</mat-card-title>
-          <mat-card-subtitle>Historial operativo para trazabilidad de caja.</mat-card-subtitle>
-        </mat-card-header>
+        <article class="surface stack">
+          <div class="cash-block__header">
+            <div>
+              <span class="page-kicker">Sesiones</span>
+              <h2 class="cash-section__title">Actividad reciente</h2>
+            </div>
+          </div>
 
-        <mat-card-content>
-          @if (sessions().length === 0) {
+          @if (recentSessions().length === 0) {
             <p class="muted">Todavia no hay sesiones registradas.</p>
           } @else {
-            <mat-list>
-              @for (session of sessions(); track session.id) {
-                <mat-list-item class="cash-history-item">
-                  <div class="cash-history-item__content">
+            <div class="cash-session-list">
+              @for (session of recentSessions(); track session.id) {
+                <article class="cash-session-item">
+                  <div class="cash-session-item__copy">
                     <strong>{{ session.register?.name || 'Caja' }}</strong>
                     <span>
                       {{ session.opened_by?.name || 'Sin usuario' }} ·
@@ -373,18 +281,221 @@ import {
                       · Egresos {{ formatCurrency(session.cash_out_total) }}
                     </small>
                   </div>
-                  <div class="cash-history-item__meta">
-                    <mat-chip-set>
-                      <mat-chip>{{ formatDateTime(session.opened_at) }}</mat-chip>
-                    </mat-chip-set>
+
+                  <div class="badge-row">
+                    <span class="pill pill--muted">{{ formatDateTime(session.opened_at) }}</span>
                   </div>
-                </mat-list-item>
-                <mat-divider></mat-divider>
+                </article>
               }
-            </mat-list>
+            </div>
           }
-        </mat-card-content>
-      </mat-card>
+        </article>
+      </section>
+
+      @if (sessionDialogOpen()) {
+        <div class="cash-modal-backdrop" (click)="closeSessionDialog()"></div>
+        <section class="cash-modal" role="dialog" aria-modal="true">
+          <article class="surface cash-modal__panel">
+            <header class="cash-modal__header">
+              <div class="page-header__copy">
+                <span class="page-kicker">Caja</span>
+                <h2 class="page-title">
+                  @if (currentSession()) {
+                    Cerrar caja
+                  } @else {
+                    Abrir caja
+                  }
+                </h2>
+                <p class="page-description">
+                  @if (currentSession()) {
+                    Confirma el monto final y deja observaciones del turno.
+                  } @else {
+                    Selecciona la caja y registra la base inicial del turno.
+                  }
+                </p>
+              </div>
+              <button class="btn btn--ghost" type="button" (click)="closeSessionDialog()">Cerrar</button>
+            </header>
+
+            @if (currentSession()) {
+              <form class="form-grid" [formGroup]="closeForm" (ngSubmit)="closeSession()">
+                <div class="split">
+                  <div class="field">
+                    <label for="cash-closing-amount">Monto de cierre</label>
+                    <input
+                      id="cash-closing-amount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      formControlName="closing_amount"
+                    />
+                  </div>
+
+                  <div class="field">
+                    <label for="cash-current-balance">Balance estimado</label>
+                    <input
+                      id="cash-current-balance"
+                      type="text"
+                      [value]="formatCurrency(currentSession()?.cash_balance ?? 0)"
+                      readonly
+                    />
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="cash-close-notes">Notas de cierre</label>
+                  <textarea id="cash-close-notes" formControlName="notes"></textarea>
+                </div>
+
+                <div class="cta-row cash-modal__actions">
+                  <button class="btn btn--ghost" type="button" (click)="closeSessionDialog()">
+                    Cancelar
+                  </button>
+                  <button class="btn btn--primary" type="submit" [disabled]="saving()">
+                    {{ saving() ? 'Guardando...' : 'Cerrar caja' }}
+                  </button>
+                </div>
+              </form>
+            } @else {
+              <form class="form-grid" [formGroup]="openForm" (ngSubmit)="openSession()">
+                <div class="split">
+                  <div class="field">
+                    <label for="cash-register">Caja</label>
+                    <select id="cash-register" formControlName="cash_register_id">
+                      <option value="">Selecciona una caja</option>
+                      @for (register of registers(); track register.id) {
+                        <option [value]="register.id">
+                          {{ register.name }}
+                          @if (register.location) {
+                            · {{ register.location }}
+                          }
+                        </option>
+                      }
+                    </select>
+                  </div>
+
+                  <div class="field">
+                    <label for="cash-opening-amount">Monto de apertura</label>
+                    <input
+                      id="cash-opening-amount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      formControlName="opening_amount"
+                    />
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="cash-open-notes">Notas</label>
+                  <textarea id="cash-open-notes" formControlName="notes"></textarea>
+                </div>
+
+                <div class="cta-row cash-modal__actions">
+                  <button class="btn btn--ghost" type="button" (click)="closeSessionDialog()">
+                    Cancelar
+                  </button>
+                  <button class="btn btn--primary" type="submit" [disabled]="saving()">
+                    {{ saving() ? 'Guardando...' : 'Abrir caja' }}
+                  </button>
+                </div>
+              </form>
+            }
+          </article>
+        </section>
+      }
+
+      @if (movementDialogOpen()) {
+        <div class="cash-modal-backdrop" (click)="closeMovementDialog()"></div>
+        <section class="cash-modal" role="dialog" aria-modal="true">
+          <article class="surface cash-modal__panel">
+            <header class="cash-modal__header">
+              <div class="page-header__copy">
+                <span class="page-kicker">Movimiento manual</span>
+                <h2 class="page-title">
+                  {{ editingMovementId() ? 'Editar movimiento' : 'Registrar movimiento' }}
+                </h2>
+                <p class="page-description">
+                  Separa ingresos y gastos del historial principal para mantener la vista despejada.
+                </p>
+              </div>
+              <button class="btn btn--ghost" type="button" (click)="closeMovementDialog()">Cerrar</button>
+            </header>
+
+            <form class="form-grid" [formGroup]="movementForm" (ngSubmit)="saveMovement()">
+              <div class="split">
+                <div class="field">
+                  <label for="movement-type">Tipo</label>
+                  <select
+                    id="movement-type"
+                    formControlName="type"
+                    #movementTypeInput
+                    (change)="onMovementTypeChange(movementTypeInput.value)"
+                  >
+                    @for (option of movementTypeOptions; track option.value) {
+                      <option [value]="option.value">{{ option.label }}</option>
+                    }
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="movement-category">Categoria</label>
+                  <select id="movement-category" formControlName="category">
+                    @for (option of currentCategoryOptions(); track option.value) {
+                      <option [value]="option.value">{{ option.label }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <div class="split">
+                <div class="field">
+                  <label for="movement-amount">Monto</label>
+                  <input
+                    id="movement-amount"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    formControlName="amount"
+                  />
+                </div>
+
+                <div class="field">
+                  <label for="movement-occurred-at">Fecha y hora</label>
+                  <input id="movement-occurred-at" type="datetime-local" formControlName="occurred_at" />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="movement-notes">Detalle</label>
+                <textarea id="movement-notes" formControlName="notes"></textarea>
+              </div>
+
+              <div class="cta-row cash-modal__actions">
+                @if (editingMovementId()) {
+                  <button class="btn btn--ghost" type="button" (click)="cancelMovementEdit()">
+                    Cancelar edicion
+                  </button>
+                } @else {
+                  <button class="btn btn--ghost" type="button" (click)="closeMovementDialog()">
+                    Cancelar
+                  </button>
+                }
+
+                <button class="btn btn--primary" type="submit" [disabled]="saving()">
+                  @if (saving()) {
+                    Guardando...
+                  } @else if (editingMovementId()) {
+                    Actualizar movimiento
+                  } @else {
+                    Registrar movimiento
+                  }
+                </button>
+              </div>
+            </form>
+          </article>
+        </section>
+      }
     </section>
   `,
   styles: `
@@ -392,18 +503,63 @@ import {
       align-content: start;
     }
 
+    .cash-control {
+      gap: 1.25rem;
+    }
+
+    .cash-control__header,
+    .cash-block__header,
+    .cash-modal__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .cash-section__title {
+      margin: 0.2rem 0 0;
+      color: var(--text-soft);
+      font-size: 1.35rem;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+
+    .cash-state-grid {
+      display: grid;
+      gap: 0.9rem;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .cash-state-card,
+    .cash-empty-state {
+      display: grid;
+      gap: 0.35rem;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 1.35rem;
+      background: rgba(246, 249, 252, 0.78);
+      padding: 1rem;
+    }
+
+    .cash-state-card strong {
+      font-size: 1.05rem;
+      color: var(--text-soft);
+    }
+
+    .cash-state-card small {
+      color: var(--text-muted);
+    }
+
     .cash-layout {
       display: grid;
       gap: 1rem;
-      grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+      grid-template-columns: minmax(0, 1.1fr) minmax(20rem, 0.9fr);
     }
 
-    .cash-card {
-      border-radius: 1.5rem;
-    }
-
-    .cash-card mat-card-content:first-of-type {
-      margin-top: 1rem;
+    .cash-list,
+    .cash-session-list {
+      display: grid;
+      gap: 0.85rem;
     }
 
     .cash-success {
@@ -411,57 +567,39 @@ import {
       background: rgba(19, 128, 77, 0.08);
     }
 
-    .cash-form,
-    .cash-summary,
-    .cash-movement-list {
+    .cash-item,
+    .cash-session-item {
       display: grid;
-      gap: 0.9rem;
+      gap: 0.75rem;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 1.25rem;
+      background: rgba(246, 249, 252, 0.88);
+      padding: 1rem;
     }
 
-    .cash-form-grid {
-      display: grid;
-      gap: 1rem;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .cash-history-item {
-      height: auto;
-      align-items: start;
-      padding-block: 0.5rem;
-    }
-
-    .cash-history-item__content {
-      display: grid;
-      gap: 0.25rem;
-      min-width: 0;
-      padding-right: 1rem;
-    }
-
-    .cash-history-item__content span,
-    .cash-history-item__content small {
-      color: var(--text-muted);
-    }
-
-    .cash-history-item__meta {
-      display: grid;
-      gap: 0.5rem;
-      justify-items: end;
-      white-space: nowrap;
-    }
-
-    .cash-movement-item {
+    .cash-item {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       gap: 1rem;
       flex-wrap: wrap;
-      border: 1px solid var(--border);
-      border-radius: 1rem;
-      background: rgba(15, 76, 129, 0.03);
-      padding: 1rem;
     }
 
-    .cash-movement-item__head {
+    .cash-item__copy,
+    .cash-session-item__copy {
+      display: grid;
+      gap: 0.25rem;
+      min-width: 0;
+    }
+
+    .cash-item__copy span,
+    .cash-item__copy small,
+    .cash-session-item__copy span,
+    .cash-session-item__copy small {
+      color: var(--text-muted);
+    }
+
+    .cash-item__head {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -469,33 +607,69 @@ import {
       flex-wrap: wrap;
     }
 
-    .cash-chip-income {
-      background: rgba(19, 128, 77, 0.14);
+    .cash-item__meta {
+      display: grid;
+      gap: 0.7rem;
+      justify-items: end;
+    }
+
+    .cash-item__amount {
+      font-size: 1rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .cash-item__amount--income,
+    .cash-pill-income {
+      background: rgba(19, 128, 77, 0.12);
       color: #166534;
     }
 
-    .cash-chip-expense {
-      background: rgba(148, 28, 28, 0.14);
+    .cash-item__amount--expense,
+    .cash-pill-expense {
+      background: rgba(148, 28, 28, 0.12);
       color: #991b1b;
     }
 
-    .cash-amount-income {
-      color: #166534;
+    .cash-item__amount--income,
+    .cash-item__amount--expense {
+      background: transparent;
     }
 
-    .cash-amount-expense {
-      color: #991b1b;
+    .cash-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(9, 14, 25, 0.42);
+    }
+
+    .cash-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 61;
+      display: grid;
+      place-items: center;
+      padding: 1.25rem;
+    }
+
+    .cash-modal__panel {
+      width: min(100%, 44rem);
+      max-height: calc(100vh - 2.5rem);
+      overflow: auto;
+    }
+
+    .cash-modal__actions {
+      justify-content: flex-end;
     }
 
     @media (max-width: 960px) {
       .cash-layout,
-      .cash-form-grid {
+      .cash-state-grid {
         grid-template-columns: 1fr;
       }
 
-      .cash-history-item__meta {
+      .cash-item__meta {
         justify-items: start;
-        white-space: normal;
       }
     }
   `,
@@ -509,6 +683,8 @@ export class CashPageComponent {
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly editingMovementId = signal<number | null>(null);
+  protected readonly sessionDialogOpen = signal(false);
+  protected readonly movementDialogOpen = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly successMessage = signal<string | null>(null);
   protected readonly legacyNotice = signal<string | null>(null);
@@ -557,6 +733,13 @@ export class CashPageComponent {
       .filter((movement) => movement.type === 'expense')
       .reduce((total, movement) => total + movement.amount, 0),
   );
+
+  protected readonly displayedMovements = computed(() => {
+    const items = this.currentSession() ? this.currentSessionMovements() : this.movements();
+    return items.slice(0, 8);
+  });
+
+  protected readonly recentSessions = computed(() => this.sessions().slice(0, 6));
 
   private readonly currencyFormatter = new Intl.NumberFormat('es-EC', {
     style: 'currency',
@@ -628,6 +811,7 @@ export class CashPageComponent {
         notes: this.nullableText(raw.notes),
       });
 
+      this.sessionDialogOpen.set(false);
       this.successMessage.set('La caja fue abierta correctamente.');
       await this.reloadCashContext();
     } catch (error) {
@@ -661,6 +845,7 @@ export class CashPageComponent {
         notes: this.nullableText(raw.notes),
       });
 
+      this.sessionDialogOpen.set(false);
       this.successMessage.set('La caja fue cerrada correctamente.');
       await this.reloadCashContext();
     } catch (error) {
@@ -670,14 +855,16 @@ export class CashPageComponent {
     }
   }
 
-  protected onMovementTypeChange(value: CashMovementType): void {
+  protected onMovementTypeChange(value: CashMovementType | string): void {
+    const normalizedValue: CashMovementType = value === 'income' ? 'income' : 'expense';
+
     const nextCategory =
-      value === 'income'
+      normalizedValue === 'income'
         ? this.incomeCategoryOptions[0]?.value ?? 'other_income'
         : this.expenseCategoryOptions[0]?.value ?? 'operational_expense';
 
     this.movementForm.patchValue({
-      type: value,
+      type: normalizedValue,
       category: nextCategory,
     });
   }
@@ -707,6 +894,7 @@ export class CashPageComponent {
         this.successMessage.set('El movimiento manual fue registrado correctamente.');
       }
 
+      this.movementDialogOpen.set(false);
       await this.reloadCashContext();
       this.resetMovementForm(this.currentSession());
     } catch (error) {
@@ -718,6 +906,7 @@ export class CashPageComponent {
 
   protected editMovement(movement: CashMovement): void {
     this.editingMovementId.set(movement.id);
+    this.movementDialogOpen.set(true);
     this.movementForm.patchValue({
       type: movement.type,
       category: movement.category,
@@ -728,6 +917,7 @@ export class CashPageComponent {
   }
 
   protected cancelMovementEdit(): void {
+    this.movementDialogOpen.set(false);
     this.resetMovementForm(this.currentSession());
   }
 
@@ -744,6 +934,7 @@ export class CashPageComponent {
       await this.api.deleteMovement(movement.id);
 
       if (this.editingMovementId() === movement.id) {
+        this.movementDialogOpen.set(false);
         this.resetMovementForm(this.currentSession());
       }
 
@@ -760,6 +951,27 @@ export class CashPageComponent {
     return this.movementForm.getRawValue().type === 'income'
       ? this.incomeCategoryOptions
       : this.expenseCategoryOptions;
+  }
+
+  protected openSessionDialog(): void {
+    this.sessionDialogOpen.set(true);
+  }
+
+  protected closeSessionDialog(): void {
+    this.sessionDialogOpen.set(false);
+  }
+
+  protected openMovementDialog(): void {
+    if (!this.currentSession()) {
+      return;
+    }
+
+    this.movementDialogOpen.set(true);
+  }
+
+  protected closeMovementDialog(): void {
+    this.movementDialogOpen.set(false);
+    this.resetMovementForm(this.currentSession());
   }
 
   protected labelForMovementType(type: CashMovementType): string {
@@ -813,6 +1025,7 @@ export class CashPageComponent {
         this.resetMovementForm(session);
       }
     } else {
+      this.movementDialogOpen.set(false);
       const fallbackRegister = this.registers()[0];
 
       this.openForm.patchValue({
@@ -879,6 +1092,10 @@ export class CashPageComponent {
       occurred_at: occurredAt ?? this.nowDateTimeLocalInput(),
       notes: notes ?? '',
     });
+
+    if (this.currentSession()) {
+      this.movementDialogOpen.set(true);
+    }
   }
 
   private nullableText(value: string | null | undefined): string | null {

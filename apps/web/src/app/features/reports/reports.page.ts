@@ -222,7 +222,25 @@ import { ReportsOverview, ReportsOverviewFilters } from './reports.types';
           </article>
         </section>
 
+        <article class="surface stack">
+          <div class="reports-sections">
+            <button class="reports-section" type="button" [class.is-active]="reportSection() === 'overview'" (click)="setReportSection('overview')">
+              Resumen
+            </button>
+            <button class="reports-section" type="button" [class.is-active]="reportSection() === 'sales'" (click)="setReportSection('sales')">
+              Ventas
+            </button>
+            <button class="reports-section" type="button" [class.is-active]="reportSection() === 'receivables'" (click)="setReportSection('receivables')">
+              Cobranza
+            </button>
+            <button class="reports-section" type="button" [class.is-active]="reportSection() === 'operations'" (click)="setReportSection('operations')">
+              Operacion
+            </button>
+          </div>
+        </article>
+
         <section class="reports-layout">
+          @if (reportSection() === 'overview') {
           <mat-card appearance="outlined" class="reports-card reports-card--wide">
             <mat-card-header>
               <mat-card-title>Utilidad operativa</mat-card-title>
@@ -327,46 +345,6 @@ import { ReportsOverview, ReportsOverviewFilters } from './reports.types';
 
           <mat-card appearance="outlined" class="reports-card">
             <mat-card-header>
-              <mat-card-title>Movimientos operativos</mat-card-title>
-              <mat-card-subtitle>
-                Historial reciente de ingresos y gastos manuales en caja.
-              </mat-card-subtitle>
-            </mat-card-header>
-
-            <mat-card-content>
-              @if (report.operational_movements.length === 0) {
-                <p class="muted">No hay movimientos operativos manuales en este rango.</p>
-              } @else {
-                <div class="reports-cash-list">
-                  @for (movement of report.operational_movements; track movement.id) {
-                    <article class="reports-cash-item">
-                      <div class="reports-cash-item__copy">
-                        <strong>
-                          {{ labelForMovementType(movement.type) }}
-                          · {{ formatCategory(movement.category) }}
-                        </strong>
-                        <span>
-                          {{ movement.user_name || 'Sin usuario' }}
-                          @if (movement.register_name) {
-                            · {{ movement.register_name }}
-                          }
-                          · {{ formatDateTime(movement.occurred_at) }}
-                        </span>
-                        <small>{{ movement.notes || 'Sin observaciones.' }}</small>
-                      </div>
-                      <mat-chip-set>
-                        <mat-chip>{{ formatCurrency(movement.amount) }}</mat-chip>
-                        <mat-chip>{{ labelForMovementType(movement.type) }}</mat-chip>
-                      </mat-chip-set>
-                    </article>
-                  }
-                </div>
-              }
-            </mat-card-content>
-          </mat-card>
-
-          <mat-card appearance="outlined" class="reports-card">
-            <mat-card-header>
               <mat-card-title>Formas de pago</mat-card-title>
               <mat-card-subtitle>Distribucion de cobros en el rango filtrado.</mat-card-subtitle>
             </mat-card-header>
@@ -395,7 +373,9 @@ import { ReportsOverview, ReportsOverviewFilters } from './reports.types';
               }
             </mat-card-content>
           </mat-card>
+          }
 
+          @if (reportSection() === 'sales') {
           <mat-card appearance="outlined" class="reports-card">
             <mat-card-header>
               <mat-card-title>Ventas por dia</mat-card-title>
@@ -542,7 +522,9 @@ import { ReportsOverview, ReportsOverviewFilters } from './reports.types';
               }
             </mat-card-content>
           </mat-card>
+          }
 
+          @if (reportSection() === 'receivables') {
           <mat-card appearance="outlined" class="reports-card reports-card--wide">
             <mat-card-header>
               <mat-card-title>Cartera por cliente</mat-card-title>
@@ -635,7 +617,9 @@ import { ReportsOverview, ReportsOverviewFilters } from './reports.types';
               }
             </mat-card-content>
           </mat-card>
+          }
 
+          @if (reportSection() === 'sales') {
           <mat-card appearance="outlined" class="reports-card reports-card--wide">
             <mat-card-header>
               <mat-card-title>Top productos</mat-card-title>
@@ -708,6 +692,48 @@ import { ReportsOverview, ReportsOverviewFilters } from './reports.types';
               }
             </mat-card-content>
           </mat-card>
+          }
+
+          @if (reportSection() === 'operations') {
+          <mat-card appearance="outlined" class="reports-card">
+            <mat-card-header>
+              <mat-card-title>Movimientos operativos</mat-card-title>
+              <mat-card-subtitle>
+                Historial reciente de ingresos y gastos manuales en caja.
+              </mat-card-subtitle>
+            </mat-card-header>
+
+            <mat-card-content>
+              @if (report.operational_movements.length === 0) {
+                <p class="muted">No hay movimientos operativos manuales en este rango.</p>
+              } @else {
+                <div class="reports-cash-list">
+                  @for (movement of report.operational_movements; track movement.id) {
+                    <article class="reports-cash-item">
+                      <div class="reports-cash-item__copy">
+                        <strong>
+                          {{ labelForMovementType(movement.type) }}
+                          · {{ formatCategory(movement.category) }}
+                        </strong>
+                        <span>
+                          {{ movement.user_name || 'Sin usuario' }}
+                          @if (movement.register_name) {
+                            · {{ movement.register_name }}
+                          }
+                          · {{ formatDateTime(movement.occurred_at) }}
+                        </span>
+                        <small>{{ movement.notes || 'Sin observaciones.' }}</small>
+                      </div>
+                      <mat-chip-set>
+                        <mat-chip>{{ formatCurrency(movement.amount) }}</mat-chip>
+                        <mat-chip>{{ labelForMovementType(movement.type) }}</mat-chip>
+                      </mat-chip-set>
+                    </article>
+                  }
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
 
           <mat-card appearance="outlined" class="reports-card reports-card--wide">
             <mat-card-header>
@@ -746,6 +772,7 @@ import { ReportsOverview, ReportsOverviewFilters } from './reports.types';
               }
             </mat-card-content>
           </mat-card>
+          }
         </section>
 
         <article class="surface surface--muted stack">
@@ -783,6 +810,28 @@ import { ReportsOverview, ReportsOverviewFilters } from './reports.types';
       display: grid;
       gap: 1rem;
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .reports-sections {
+      display: flex;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .reports-section {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 999px;
+      background: rgba(246, 249, 252, 0.95);
+      color: var(--text-muted);
+      font-weight: 700;
+      min-height: 2.8rem;
+      padding: 0 1rem;
+    }
+
+    .reports-section.is-active {
+      border-color: rgba(22, 138, 87, 0.26);
+      background: rgba(22, 138, 87, 0.1);
+      color: var(--primary-strong);
     }
 
     .reports-card {
@@ -939,6 +988,7 @@ export class ReportsPageComponent {
   protected readonly legacyNotice = signal<string | null>(null);
   protected readonly report = signal<ReportsOverview | null>(null);
   protected readonly customers = signal<BusinessPartner[]>([]);
+  protected readonly reportSection = signal<'overview' | 'sales' | 'receivables' | 'operations'>('overview');
 
   protected readonly filtersForm = this.fb.group({
     date_from: [''],
@@ -978,6 +1028,10 @@ export class ReportsPageComponent {
       || this.downloadingSalesCsv()
       || this.downloadingProductsCsv()
     );
+  }
+
+  protected setReportSection(section: 'overview' | 'sales' | 'receivables' | 'operations'): void {
+    this.reportSection.set(section);
   }
 
   public constructor() {

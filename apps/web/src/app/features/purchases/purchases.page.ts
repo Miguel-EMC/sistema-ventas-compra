@@ -1,13 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { resolveApiError } from '../../core/http/resolve-api-error';
@@ -31,29 +24,19 @@ import {
 
 @Component({
   selector: 'app-purchases-page',
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatCardModule,
-    MatChipsModule,
-    MatDividerModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatProgressBarModule,
-    MatSelectModule,
-  ],
+  imports: [ReactiveFormsModule, MatProgressBarModule],
   template: `
     <section class="stack purchases-page">
       <header class="page-header">
         <div class="page-header__copy">
           <span class="page-kicker">Compras</span>
-          <h1 class="page-title">Abastecimiento, recepcion y entrada de stock.</h1>
+          <h1 class="page-title">Abastecimiento, recepcion y cuentas por pagar.</h1>
           <p class="page-description">
-            Este modulo ya conecta proveedores, productos y movimientos de stock para registrar
-            compras reales, recepciones, devoluciones, pagos y saldo pendiente sobre la API nueva.
+            El tablero principal queda orientado a seguimiento. Las ordenes, pagos, devoluciones y
+            anulaciones se gestionan en flujos separados para evitar una pantalla saturada.
           </p>
         </div>
-        <span class="pill">Compras + stock + cuentas por pagar</span>
+        <span class="pill">Operacion de compras</span>
       </header>
 
       @if (loading()) {
@@ -127,44 +110,47 @@ import {
 
       <article class="surface">
         <div class="purchases-toolbar">
-          <mat-form-field appearance="outline" class="purchases-toolbar__search">
-            <mat-label>Buscar orden o proveedor</mat-label>
+          <div class="field field--search purchases-toolbar__search">
+            <label for="purchase-search">Buscar orden o proveedor</label>
             <input
-              matInput
+              id="purchase-search"
               type="text"
               [value]="search()"
               (input)="onSearch($event)"
               placeholder="OC, proveedor o documento"
             />
-          </mat-form-field>
+          </div>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Estado</mat-label>
-            <mat-select [value]="statusFilter()" (selectionChange)="onStatusChange($event.value)">
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="ordered">Pendiente</mat-option>
-              <mat-option value="received">Recibida</mat-option>
-              <mat-option value="cancelled">Anulada</mat-option>
-            </mat-select>
-          </mat-form-field>
+          <div class="field purchases-toolbar__filter">
+            <label for="purchase-status">Estado</label>
+            <select id="purchase-status" #purchaseStatus [value]="statusFilter()" (change)="onStatusChange(purchaseStatus.value)">
+              <option value="">Todos</option>
+              <option value="ordered">Pendiente</option>
+              <option value="received">Recibida</option>
+              <option value="cancelled">Anulada</option>
+            </select>
+          </div>
 
           <div class="cta-row">
-            <button mat-stroked-button type="button" (click)="refresh()">Refrescar</button>
+            <button class="btn" type="button" (click)="refresh()">Refrescar</button>
             @if (auth.isAdmin()) {
-              <button mat-flat-button color="primary" type="button" (click)="resetForm()">Nueva orden</button>
+              <button class="btn btn--primary" type="button" (click)="openCreateOrderDialog()">
+                Nueva orden
+              </button>
             }
           </div>
         </div>
       </article>
 
       <section class="purchases-layout">
-        <mat-card appearance="outlined" class="purchases-card">
-          <mat-card-header>
-            <mat-card-title>Ordenes de compra</mat-card-title>
-            <mat-card-subtitle>Registro operativo de abastecimiento y recepcion.</mat-card-subtitle>
-          </mat-card-header>
+        <article class="surface stack">
+          <div class="purchases-block__header">
+            <div>
+              <span class="page-kicker">Ordenes de compra</span>
+              <h2 class="purchases-section__title">Registro operativo</h2>
+            </div>
+          </div>
 
-          <mat-card-content>
             @if (orders().length === 0) {
               <p class="muted">Todavia no hay ordenes de compra registradas con este filtro.</p>
             } @else {
@@ -178,22 +164,24 @@ import {
                     <div class="purchase-order-row__copy">
                       <div class="purchase-order-row__header">
                         <strong>{{ order.supplier?.name || 'Proveedor sin registro' }}</strong>
-                        <mat-chip-set>
-                          <mat-chip
-                            [class.purchase-chip-received]="order.status === 'received'"
-                            [class.purchase-chip-cancelled]="order.status === 'cancelled'"
+                        <div class="badge-row">
+                          <span
+                            class="pill"
+                            [class.purchase-pill-received]="order.status === 'received'"
+                            [class.purchase-pill-cancelled]="order.status === 'cancelled'"
                           >
                             {{ labelForStatus(order.status) }}
-                          </mat-chip>
-                          <mat-chip
-                            [class.purchase-payment-chip-partial]="order.payment_status === 'partial'"
-                            [class.purchase-payment-chip-paid]="order.payment_status === 'paid'"
-                            [class.purchase-payment-chip-credit]="order.payment_status === 'credit'"
+                          </span>
+                          <span
+                            class="pill"
+                            [class.purchase-payment-pill-partial]="order.payment_status === 'partial'"
+                            [class.purchase-payment-pill-paid]="order.payment_status === 'paid'"
+                            [class.purchase-payment-pill-credit]="order.payment_status === 'credit'"
                           >
                             {{ labelForPaymentStatus(order.payment_status) }}
-                          </mat-chip>
-                          <mat-chip>{{ order.items_count }} item(s)</mat-chip>
-                        </mat-chip-set>
+                          </span>
+                          <span class="pill pill--muted">{{ order.items_count }} item(s)</span>
+                        </div>
                       </div>
 
                       <span>
@@ -222,16 +210,15 @@ import {
                     </div>
 
                     <div class="purchase-order-row__actions">
-                      <button mat-stroked-button type="button" (click)="selectOnly(order, $event)">
+                      <button class="btn btn--ghost" type="button" (click)="selectOnly(order, $event)">
                         Ver
                       </button>
                       @if (auth.isAdmin() && order.status === 'ordered') {
-                        <button mat-stroked-button type="button" (click)="editOrder(order, $event)">
+                        <button class="btn btn--ghost" type="button" (click)="editOrder(order, $event)">
                           Editar
                         </button>
                         <button
-                          mat-flat-button
-                          color="primary"
+                          class="btn btn--primary"
                           type="button"
                           (click)="receiveOrder(order, $event)"
                           [disabled]="receivingId() === order.id"
@@ -241,7 +228,7 @@ import {
                       }
                       @if (auth.isAdmin() && order.status !== 'cancelled') {
                         <button
-                          mat-stroked-button
+                          class="btn"
                           type="button"
                           (click)="prepareCancellation(order, $event)"
                           [disabled]="cancellingId() === order.id"
@@ -254,47 +241,86 @@ import {
                 }
               </div>
             }
-          </mat-card-content>
-        </mat-card>
+        </article>
 
         <div class="purchases-side">
-          <mat-card appearance="outlined" class="purchases-card">
-            <mat-card-header>
-              <mat-card-title>Detalle de la orden</mat-card-title>
-              <mat-card-subtitle>
+          <article class="surface stack">
+            <div class="purchases-block__header">
+              <div>
+                <span class="page-kicker">Detalle</span>
+                <h2 class="purchases-section__title">Seguimiento de la orden</h2>
+              </div>
+              <div class="cta-row">
                 @if (selectedOrder(); as order) {
-                  {{ order.reference || order.public_id || '#' + order.id }}
-                } @else {
-                  Selecciona una orden para revisar sus items.
+                  @if (auth.isAdmin() && order.status === 'ordered') {
+                    <button class="btn btn--ghost" type="button" (click)="editOrder(order, $event)">
+                      Editar
+                    </button>
+                    <button
+                      class="btn"
+                      type="button"
+                      (click)="receiveOrder(order, $event)"
+                      [disabled]="receivingId() === order.id"
+                    >
+                      {{ receivingId() === order.id ? 'Recibiendo...' : 'Recibir' }}
+                    </button>
+                  }
+                  @if (auth.isAdmin() && order.status === 'received') {
+                    <button class="btn btn--ghost" type="button" (click)="openPaymentDialog(order)">
+                      Registrar pago
+                    </button>
+                    <button class="btn btn--ghost" type="button" (click)="openReturnDialog(order)">
+                      Devolucion
+                    </button>
+                  }
+                  @if (auth.isAdmin() && order.status !== 'cancelled') {
+                    <button class="btn" type="button" (click)="prepareCancellation(order, $event)">
+                      Anular
+                    </button>
+                  }
                 }
-              </mat-card-subtitle>
-            </mat-card-header>
+              </div>
+            </div>
 
-            <mat-card-content>
               @if (selectedOrder(); as order) {
                 <div class="stack">
-                  <mat-chip-set>
-                    <mat-chip>{{ labelForStatus(order.status) }}</mat-chip>
-                    <mat-chip
-                      [class.purchase-payment-chip-partial]="order.payment_status === 'partial'"
-                      [class.purchase-payment-chip-paid]="order.payment_status === 'paid'"
-                      [class.purchase-payment-chip-credit]="order.payment_status === 'credit'"
+                  <div class="badge-row">
+                    <span class="pill">{{ labelForStatus(order.status) }}</span>
+                    <span
+                      class="pill"
+                      [class.purchase-payment-pill-partial]="order.payment_status === 'partial'"
+                      [class.purchase-payment-pill-paid]="order.payment_status === 'paid'"
+                      [class.purchase-payment-pill-credit]="order.payment_status === 'credit'"
                     >
                       {{ labelForPaymentStatus(order.payment_status) }}
-                    </mat-chip>
-                    <mat-chip>{{ formatDate(order.ordered_at) }}</mat-chip>
-                    <mat-chip>Proveedor {{ order.supplier?.name || 'Sin proveedor' }}</mat-chip>
+                    </span>
+                    <span class="pill pill--muted">{{ formatDate(order.ordered_at) }}</span>
+                    <span class="pill pill--muted">
+                      Proveedor {{ order.supplier?.name || 'Sin proveedor' }}
+                    </span>
                     @if (order.returns_count > 0) {
-                      <mat-chip>Devuelto {{ formatCurrency(order.returned_total) }}</mat-chip>
+                      <span class="pill pill--muted">
+                        Devuelto {{ formatCurrency(order.returned_total) }}
+                      </span>
                     }
                     @if (order.payments_count > 0) {
-                      <mat-chip>Pagado {{ formatCurrency(order.paid_total) }}</mat-chip>
+                      <span class="pill pill--muted">Pagado {{ formatCurrency(order.paid_total) }}</span>
                     }
-                    <mat-chip>Saldo {{ formatCurrency(order.balance_due) }}</mat-chip>
+                    <span class="pill pill--muted">Saldo {{ formatCurrency(order.balance_due) }}</span>
                     @if (order.cancelled_at) {
-                      <mat-chip>Anulada {{ formatDateTime(order.cancelled_at) }}</mat-chip>
+                      <span class="pill pill--muted">Anulada {{ formatDateTime(order.cancelled_at) }}</span>
                     }
-                  </mat-chip-set>
+                  </div>
+
+                  <div class="purchase-order-meta">
+                    <strong>{{ order.reference || order.public_id || '#' + order.id }}</strong>
+                    <span>
+                      Total {{ formatCurrency(order.grand_total) }}
+                      @if (order.received_at) {
+                        · Recibida {{ formatDateTime(order.received_at) }}
+                      }
+                    </span>
+                  </div>
 
                   @if (order.notes) {
                     <p class="muted">{{ order.notes }}</p>
@@ -311,6 +337,35 @@ import {
                           Sin usuario asociado
                         }
                       </span>
+                    </article>
+                  }
+
+                  <div class="purchase-summary-grid">
+                    <article class="surface surface--muted purchase-summary-card">
+                      <span class="metric-card__label">Neto a pagar</span>
+                      <strong>{{ formatCurrency(order.net_payable_total) }}</strong>
+                      <small>Total despues de devoluciones.</small>
+                    </article>
+
+                    <article class="surface surface--muted purchase-summary-card">
+                      <span class="metric-card__label">Pagado</span>
+                      <strong>{{ formatCurrency(order.paid_total) }}</strong>
+                      <small>{{ order.payments_count }} pago(s) registrados.</small>
+                    </article>
+
+                    <article class="surface surface--muted purchase-summary-card">
+                      <span class="metric-card__label">Saldo</span>
+                      <strong>{{ formatCurrency(order.balance_due) }}</strong>
+                      <small>{{ labelForPaymentStatus(order.payment_status) }}</small>
+                    </article>
+                  </div>
+
+                  @if (order.payment_status === 'credit') {
+                    <article class="surface surface--muted stack purchases-warning">
+                      <span class="page-kicker">Credito a favor</span>
+                      <strong>
+                        Las devoluciones ya superan lo pagado y queda un saldo a favor con el proveedor.
+                      </strong>
                     </article>
                   }
 
@@ -338,8 +393,6 @@ import {
                     }
                   </div>
 
-                  <mat-divider></mat-divider>
-
                   <div class="purchase-detail-summary">
                     <strong>Total {{ formatCurrency(order.grand_total) }}</strong>
                     <span>
@@ -355,281 +408,43 @@ import {
                     </span>
                   </div>
 
-                  <mat-divider></mat-divider>
-
                   <div class="stack">
-                    <span class="page-kicker">Cuentas por pagar</span>
 
-                    <div class="purchase-payment-summary">
-                      <article class="surface surface--muted purchase-payment-summary__card">
-                        <span class="metric-card__label">Neto a pagar</span>
-                        <strong>{{ formatCurrency(order.net_payable_total) }}</strong>
-                        <small>Total despues de devoluciones.</small>
-                      </article>
-
-                      <article class="surface surface--muted purchase-payment-summary__card">
-                        <span class="metric-card__label">Pagado</span>
-                        <strong>{{ formatCurrency(order.paid_total) }}</strong>
-                        <small>{{ order.payments_count }} pago(s) registrados.</small>
-                      </article>
-
-                      <article class="surface surface--muted purchase-payment-summary__card">
-                        <span class="metric-card__label">Saldo</span>
-                        <strong>{{ formatCurrency(order.balance_due) }}</strong>
-                        <small>{{ labelForPaymentStatus(order.payment_status) }}</small>
-                      </article>
-                    </div>
-
-                    @if (order.payment_status === 'credit') {
-                      <article class="surface surface--muted stack purchases-warning">
-                        <span class="page-kicker">Credito a favor</span>
-                        <strong>
-                          Las devoluciones ya superan lo pagado y queda un saldo a favor con el proveedor.
-                        </strong>
-                      </article>
-                    }
-
-                    @if (auth.isAdmin() && order.status === 'received') {
-                      <div class="stack">
-                        <span class="page-kicker">Registrar pago</span>
-
-                        @if (order.balance_due <= 0) {
-                          <p class="muted">
-                            Esta compra ya no tiene saldo pendiente para nuevos pagos.
-                          </p>
-                        } @else {
-                          <div class="purchase-payment-form-grid">
-                            <mat-form-field appearance="outline">
-                              <mat-label>Metodo</mat-label>
-                              <mat-select
-                                [value]="purchasePaymentMethod()"
-                                (selectionChange)="onPurchasePaymentMethodChange($event.value)"
-                              >
-                                @for (paymentMethod of paymentMethods; track paymentMethod.value) {
-                                  <mat-option [value]="paymentMethod.value">
-                                    {{ paymentMethod.label }}
-                                  </mat-option>
+                    @if (order.payments.length === 0) {
+                      <p class="muted">Esta orden todavia no tiene pagos registrados.</p>
+                    } @else {
+                      <div class="purchase-payment-history">
+                        @for (payment of order.payments; track payment.id) {
+                          <article class="purchase-payment-history-item">
+                            <div class="purchase-detail-item__copy">
+                              <strong>{{ payment.public_id || '#' + payment.id }}</strong>
+                              <span>
+                                {{ formatDateTime(payment.paid_at) }}
+                                @if (payment.paid_by?.name) {
+                                  · {{ payment.paid_by?.name }}
                                 }
-                              </mat-select>
-                            </mat-form-field>
-
-                            <mat-form-field appearance="outline">
-                              <mat-label>Monto</mat-label>
-                              <input
-                                matInput
-                                type="number"
-                                min="0.01"
-                                step="0.01"
-                                [value]="purchasePaymentAmount()"
-                                [disabled]="payingOrderId() === order.id"
-                                (input)="onPurchasePaymentAmountChange($event)"
-                              />
-                            </mat-form-field>
-
-                            <mat-form-field appearance="outline">
-                              <mat-label>Referencia</mat-label>
-                              <input
-                                matInput
-                                type="text"
-                                [value]="purchasePaymentReference()"
-                                [disabled]="payingOrderId() === order.id"
-                                (input)="onPurchasePaymentReferenceChange($event)"
-                              />
-                            </mat-form-field>
-                          </div>
-
-                          <mat-form-field appearance="outline">
-                            <mat-label>Notas internas</mat-label>
-                            <textarea
-                              matInput
-                              rows="3"
-                              [value]="purchasePaymentNotes()"
-                              [disabled]="payingOrderId() === order.id"
-                              (input)="onPurchasePaymentNotesChange($event)"
-                            ></textarea>
-                          </mat-form-field>
-
-                          @if (purchasePaymentMethod() === 'cash') {
-                            <p class="muted purchases-warning-text">
-                              Los pagos en efectivo requieren una caja abierta para el usuario actual.
-                            </p>
-                          }
-
-                          <mat-chip-set>
-                            <mat-chip highlighted>
-                              Saldo actual {{ formatCurrency(order.balance_due) }}
-                            </mat-chip>
-                            <mat-chip>
-                              Nuevo saldo estimado
-                              {{ formatCurrency(estimatedBalanceAfterPayment(order)) }}
-                            </mat-chip>
-                          </mat-chip-set>
-                          <div class="cta-row">
-                            <button
-                              mat-stroked-button
-                              type="button"
-                              (click)="setOutstandingPaymentAmount(order)"
-                              [disabled]="payingOrderId() === order.id"
-                            >
-                              Usar saldo pendiente
-                            </button>
-                            <button
-                              mat-flat-button
-                              color="primary"
-                              type="button"
-                              (click)="createPurchasePayment()"
-                              [disabled]="isPaymentDisabled(order)"
-                            >
-                              Registrar pago
-                            </button>
-                          </div>
+                                @if (payment.cash_session?.register_name) {
+                                  · {{ payment.cash_session?.register_name }}
+                                }
+                              </span>
+                              <small>
+                                {{ formatPaymentMethod(payment.method) }}
+                                @if (payment.reference) {
+                                  · Ref {{ payment.reference }}
+                                }
+                              </small>
+                              @if (payment.notes) {
+                                <small>{{ payment.notes }}</small>
+                              }
+                            </div>
+                            <div class="purchase-detail-item__amount">
+                              {{ formatCurrency(payment.amount) }}
+                            </div>
+                          </article>
                         }
                       </div>
                     }
-
-                    <div class="stack">
-                      <span class="page-kicker">Historial de pagos</span>
-
-                      @if (order.payments.length === 0) {
-                        <p class="muted">
-                          Esta orden todavia no tiene pagos registrados.
-                        </p>
-                      } @else {
-                        <div class="purchase-payment-history">
-                          @for (payment of order.payments; track payment.id) {
-                            <article class="purchase-payment-history-item">
-                              <div class="purchase-detail-item__copy">
-                                <strong>{{ payment.public_id || '#' + payment.id }}</strong>
-                                <span>
-                                  {{ formatDateTime(payment.paid_at) }}
-                                  @if (payment.paid_by?.name) {
-                                    · {{ payment.paid_by?.name }}
-                                  }
-                                  @if (payment.cash_session?.register_name) {
-                                    · {{ payment.cash_session?.register_name }}
-                                  }
-                                </span>
-                                <small>
-                                  {{ formatPaymentMethod(payment.method) }}
-                                  @if (payment.reference) {
-                                    · Ref {{ payment.reference }}
-                                  }
-                                </small>
-                                @if (payment.notes) {
-                                  <small>{{ payment.notes }}</small>
-                                }
-                              </div>
-                              <div class="purchase-detail-item__amount">
-                                {{ formatCurrency(payment.amount) }}
-                              </div>
-                            </article>
-                          }
-                        </div>
-                      }
-                    </div>
                   </div>
-
-                  @if (auth.isAdmin() && order.status === 'received') {
-                    <mat-divider></mat-divider>
-
-                    <div class="stack">
-                      <span class="page-kicker">Devolucion a proveedor</span>
-
-                      @if (!hasReturnableItems(order)) {
-                        <p class="muted">
-                          Todos los items recibidos ya fueron devueltos por completo.
-                        </p>
-                      } @else {
-                        <div class="purchase-return-items">
-                          @for (item of order.items; track item.id) {
-                            @if (item.remaining_returnable_quantity > 0) {
-                              <article class="purchase-return-item">
-                                <div class="purchase-detail-item__copy">
-                                  <strong>{{ item.name_snapshot }}</strong>
-                                  <span>
-                                    Devuelto {{ formatNumber(item.returned_quantity) }} de
-                                    {{ formatNumber(item.quantity_received) }}
-                                  </span>
-                                  <small>
-                                    Restante {{ formatNumber(item.remaining_returnable_quantity) }} ·
-                                    Costo {{ formatCurrency(item.unit_cost) }}
-                                  </small>
-                                </div>
-
-                                <div class="purchase-return-item__entry">
-                                  <mat-form-field appearance="outline">
-                                    <mat-label>Cantidad a devolver</mat-label>
-                                    <input
-                                      matInput
-                                      type="number"
-                                      min="0"
-                                      [max]="item.remaining_returnable_quantity"
-                                      step="0.01"
-                                      [value]="getReturnQuantity(item.id)"
-                                      [disabled]="returningOrderId() === order.id"
-                                      (input)="onReturnQuantityChange(item, $event)"
-                                    />
-                                  </mat-form-field>
-
-                                  <button
-                                    mat-stroked-button
-                                    type="button"
-                                    (click)="setMaxReturnQuantity(item)"
-                                    [disabled]="returningOrderId() === order.id"
-                                  >
-                                    Maximo
-                                  </button>
-                                </div>
-                              </article>
-                            }
-                          }
-                        </div>
-
-                        <mat-form-field appearance="outline">
-                          <mat-label>Motivo general</mat-label>
-                          <textarea
-                            matInput
-                            rows="3"
-                            [value]="purchaseReturnReason()"
-                            (input)="onPurchaseReturnReasonChange($event)"
-                          ></textarea>
-                        </mat-form-field>
-
-                        <mat-form-field appearance="outline">
-                          <mat-label>Notas internas</mat-label>
-                          <textarea
-                            matInput
-                            rows="3"
-                            [value]="purchaseReturnNotes()"
-                            (input)="onPurchaseReturnNotesChange($event)"
-                          ></textarea>
-                        </mat-form-field>
-
-                        <div class="cta-row">
-                          <mat-chip-set>
-                            <mat-chip>Items seleccionados {{ selectedReturnEntries().length }}</mat-chip>
-                            <mat-chip highlighted>
-                              Total devuelto {{ formatCurrency(selectedReturnTotal()) }}
-                            </mat-chip>
-                          </mat-chip-set>
-                        </div>
-
-                        <div class="cta-row">
-                          <button
-                            mat-flat-button
-                            color="primary"
-                            type="button"
-                            (click)="createPurchaseReturn()"
-                            [disabled]="isPurchaseReturnDisabled(order)"
-                          >
-                            Registrar devolucion
-                          </button>
-                        </div>
-                      }
-                    </div>
-                  }
-
-                  <mat-divider></mat-divider>
 
                   <div class="stack">
                     <span class="page-kicker">Historial de devoluciones</span>
@@ -651,14 +466,16 @@ import {
                                 }
                               </span>
                               <small>{{ purchaseReturn.reason }}</small>
-                              <mat-chip-set>
-                                <mat-chip>Total {{ formatCurrency(purchaseReturn.return_total) }}</mat-chip>
+                              <div class="badge-row">
+                                <span class="pill pill--muted">
+                                  Total {{ formatCurrency(purchaseReturn.return_total) }}
+                                </span>
                                 @for (item of purchaseReturn.items; track item.id) {
-                                  <mat-chip>
+                                  <span class="pill pill--muted">
                                     {{ item.name_snapshot }} · {{ formatNumber(item.quantity) }}
-                                  </mat-chip>
+                                  </span>
                                 }
-                              </mat-chip-set>
+                              </div>
                             </div>
                             <div class="purchase-detail-item__amount">
                               {{ formatCurrency(purchaseReturn.return_total) }}
@@ -668,197 +485,489 @@ import {
                       </div>
                     }
                   </div>
-
-                  @if (auth.isAdmin() && order.status !== 'cancelled') {
-                    <mat-divider></mat-divider>
-
-                    <div class="stack">
-                      <span class="page-kicker">Anular orden</span>
-                      @if (order.payments_count > 0) {
-                        <p class="muted purchases-warning-text">
-                          La anulacion queda bloqueada porque la compra ya tiene pagos registrados.
-                        </p>
-                      }
-                      <mat-form-field appearance="outline">
-                        <mat-label>Motivo de anulacion</mat-label>
-                        <textarea
-                          matInput
-                          rows="3"
-                          [value]="purchaseCancellationReason()"
-                          (input)="onPurchaseCancellationReasonChange($event)"
-                        ></textarea>
-                      </mat-form-field>
-
-                      @if (order.status === 'received') {
-                        <p class="muted purchases-warning-text">
-                          Esta accion revertira la entrada de stock de la compra, siempre que el
-                          inventario actual alcance para hacer la reversa.
-                        </p>
-                      }
-
-                      <div class="cta-row">
-                        <button
-                          mat-stroked-button
-                          type="button"
-                          (click)="cancelSelectedOrder()"
-                          [disabled]="cancellingId() === order.id || order.payments_count > 0"
-                        >
-                          Confirmar anulacion
-                        </button>
-                      </div>
-                    </div>
-                  }
                 </div>
               } @else {
                 <p class="muted">Aqui veras el detalle, los items y el estado de la orden seleccionada.</p>
               }
-            </mat-card-content>
-          </mat-card>
+          </article>
 
-          @if (auth.isAdmin()) {
-            <mat-card appearance="outlined" class="purchases-card">
-              <mat-card-header>
-                <mat-card-title>
-                  @if (editingOrderId()) {
-                    Editar orden de compra
-                  } @else {
-                    Nueva orden de compra
-                  }
-                </mat-card-title>
-                <mat-card-subtitle>Preparar abastecimiento y dejar recepcion lista.</mat-card-subtitle>
-              </mat-card-header>
+          @if (!auth.isAdmin()) {
+            <article class="surface stack">
+              <span class="page-kicker">Permisos</span>
+              <h2 class="purchases-section__title">Consulta habilitada</h2>
+              <p class="muted">
+                Tu rol puede revisar ordenes y recepciones, pero la creacion o edicion se reserva a
+                administracion.
+              </p>
+            </article>
+          }
+        </div>
+      </section>
 
-              <mat-card-content class="stack" [formGroup]="form">
-                <div class="purchases-form-grid">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Proveedor</mat-label>
-                    <mat-select formControlName="supplier_id">
+      @if (auth.isAdmin() && orderDialogOpen()) {
+        <div class="purchases-modal-backdrop" (click)="closeOrderDialog()"></div>
+        <section class="purchases-modal" role="dialog" aria-modal="true">
+          <article class="surface purchases-modal__panel purchases-modal__panel--wide">
+            <header class="purchases-modal__header">
+              <div class="page-header__copy">
+                <span class="page-kicker">Orden de compra</span>
+                <h2 class="page-title">
+                  {{ editingOrderId() ? 'Editar orden de compra' : 'Nueva orden de compra' }}
+                </h2>
+                <p class="page-description">
+                  Divide la preparacion de la compra por pasos para que el alta no invada el resto de la vista.
+                </p>
+              </div>
+              <button class="btn btn--ghost" type="button" (click)="closeOrderDialog()">Cerrar</button>
+            </header>
+
+            <div class="purchases-steps">
+              <button
+                class="purchases-step"
+                type="button"
+                [class.is-active]="orderStep() === 'general'"
+                (click)="setOrderStep('general')"
+              >
+                General
+              </button>
+              <button
+                class="purchases-step"
+                type="button"
+                [class.is-active]="orderStep() === 'items'"
+                (click)="setOrderStep('items')"
+              >
+                Items
+              </button>
+            </div>
+
+            <form class="form-grid" [formGroup]="form">
+              @if (orderStep() === 'general') {
+                <div class="split">
+                  <div class="field">
+                    <label for="purchase-supplier">Proveedor</label>
+                    <select id="purchase-supplier" formControlName="supplier_id">
+                      <option value="">Selecciona un proveedor</option>
                       @for (supplier of suppliers(); track supplier.id) {
-                        <mat-option [value]="supplier.id">{{ supplier.name }}</mat-option>
+                        <option [value]="supplier.id">{{ supplier.name }}</option>
                       }
-                    </mat-select>
-                  </mat-form-field>
+                    </select>
+                  </div>
 
-                  <mat-form-field appearance="outline">
-                    <mat-label>Referencia</mat-label>
-                    <input matInput type="text" formControlName="reference" />
-                  </mat-form-field>
+                  <div class="field">
+                    <label for="purchase-reference">Referencia</label>
+                    <input id="purchase-reference" type="text" formControlName="reference" />
+                  </div>
                 </div>
 
-                <div class="purchases-form-grid">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Fecha de orden</mat-label>
-                    <input matInput type="date" formControlName="ordered_at" />
-                  </mat-form-field>
+                <div class="split">
+                  <div class="field">
+                    <label for="purchase-ordered-at">Fecha de orden</label>
+                    <input id="purchase-ordered-at" type="date" formControlName="ordered_at" />
+                  </div>
 
-                  <mat-form-field appearance="outline">
-                    <mat-label>Notas</mat-label>
-                    <textarea matInput rows="3" formControlName="notes"></textarea>
-                  </mat-form-field>
+                  <div class="field">
+                    <label for="purchase-notes">Notas</label>
+                    <textarea id="purchase-notes" formControlName="notes"></textarea>
+                  </div>
                 </div>
+              }
 
-                <mat-divider></mat-divider>
-
+              @if (orderStep() === 'items') {
                 <div class="purchases-items-head">
                   <div>
                     <span class="page-kicker">Items</span>
-                    <h3 class="page-title purchases-form__title">Detalle de compra</h3>
+                    <h3 class="purchases-section__title purchases-form__title">Detalle de compra</h3>
                   </div>
-                  <button mat-stroked-button type="button" (click)="addItemRow()">
-                    Agregar item
-                  </button>
+                  <button class="btn btn--ghost" type="button" (click)="addItemRow()">Agregar item</button>
                 </div>
 
                 <div class="purchase-form-items">
                   @for (itemGroup of itemControls(); track $index; let index = $index) {
                     <article class="purchase-form-item" [formGroup]="asFormGroup(itemGroup)">
                       <div class="purchase-form-item__grid">
-                        <mat-form-field appearance="outline">
-                          <mat-label>Producto</mat-label>
-                          <mat-select
+                        <div class="field">
+                          <label [for]="'purchase-item-product-' + index">Producto</label>
+                          <select
+                            [id]="'purchase-item-product-' + index"
                             formControlName="product_id"
-                            (selectionChange)="onProductChange(index, $event.value)"
+                            #purchaseProduct
+                            (change)="onProductChange(index, purchaseProduct.value)"
                           >
+                            <option value="">Selecciona un producto</option>
                             @for (product of products(); track product.id) {
-                              <mat-option [value]="product.id">
+                              <option [value]="product.id">
                                 {{ product.name }} · Costo {{ formatCurrency(product.cost_price) }}
-                              </mat-option>
+                              </option>
                             }
-                          </mat-select>
-                        </mat-form-field>
+                          </select>
+                        </div>
 
-                        <mat-form-field appearance="outline">
-                          <mat-label>Cantidad</mat-label>
-                          <input matInput type="number" min="0.01" step="0.01" formControlName="quantity_ordered" />
-                        </mat-form-field>
+                        <div class="field">
+                          <label [for]="'purchase-item-qty-' + index">Cantidad</label>
+                          <input
+                            [id]="'purchase-item-qty-' + index"
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            formControlName="quantity_ordered"
+                          />
+                        </div>
 
-                        <mat-form-field appearance="outline">
-                          <mat-label>Costo unitario</mat-label>
-                          <input matInput type="number" min="0" step="0.01" formControlName="unit_cost" />
-                        </mat-form-field>
+                        <div class="field">
+                          <label [for]="'purchase-item-cost-' + index">Costo unitario</label>
+                          <input
+                            [id]="'purchase-item-cost-' + index"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            formControlName="unit_cost"
+                          />
+                        </div>
                       </div>
 
                       <div class="purchase-form-item__meta">
                         @if (productForRow(index); as product) {
-                          <mat-chip-set>
-                            <mat-chip>Stock {{ formatNumber(product.current_stock) }}</mat-chip>
-                            <mat-chip>Unidad {{ product.unit }}</mat-chip>
-                            <mat-chip>Venta {{ formatCurrency(product.sale_price) }}</mat-chip>
-                          </mat-chip-set>
+                          <div class="badge-row">
+                            <span class="pill pill--muted">Stock {{ formatNumber(product.current_stock) }}</span>
+                            <span class="pill pill--muted">Unidad {{ product.unit }}</span>
+                            <span class="pill pill--muted">Venta {{ formatCurrency(product.sale_price) }}</span>
+                          </div>
                         }
 
                         <button
-                          mat-icon-button
+                          class="btn"
                           type="button"
-                          aria-label="Eliminar linea"
                           (click)="removeItemRow(index)"
                           [disabled]="itemControls().length === 1"
                         >
-                          <span aria-hidden="true">&times;</span>
+                          Eliminar linea
                         </button>
                       </div>
 
-                      <mat-form-field appearance="outline">
-                        <mat-label>Nota del item</mat-label>
-                        <input matInput type="text" formControlName="notes" />
-                      </mat-form-field>
+                      <div class="field">
+                        <label [for]="'purchase-item-note-' + index">Nota del item</label>
+                        <input [id]="'purchase-item-note-' + index" type="text" formControlName="notes" />
+                      </div>
                     </article>
                   }
                 </div>
 
-                <mat-chip-set>
-                  <mat-chip>{{ itemControls().length }} linea(s)</mat-chip>
-                  <mat-chip highlighted>Total estimado {{ formatCurrency(formTotal()) }}</mat-chip>
-                </mat-chip-set>
+                <div class="badge-row">
+                  <span class="pill pill--muted">{{ itemControls().length }} linea(s)</span>
+                  <span class="pill">Total estimado {{ formatCurrency(formTotal()) }}</span>
+                </div>
+              }
 
-                <div class="cta-row">
-                  <button mat-stroked-button type="button" (click)="resetForm()">Limpiar</button>
-                  <button mat-flat-button color="primary" type="button" (click)="save()" [disabled]="saving()">
-                    @if (editingOrderId()) {
+              @if (error()) {
+                <p class="alert alert--danger">{{ error() }}</p>
+              }
+
+              <div class="cta-row purchases-modal__actions">
+                <button class="btn btn--ghost" type="button" (click)="closeOrderDialog()">Cancelar</button>
+                <button
+                  class="btn btn--ghost"
+                  type="button"
+                  (click)="previousOrderStep()"
+                  [disabled]="orderStep() === 'general'"
+                >
+                  Atras
+                </button>
+                @if (orderStep() === 'general') {
+                  <button class="btn" type="button" (click)="nextOrderStep()">Siguiente</button>
+                } @else {
+                  <button class="btn" type="button" (click)="resetForm(false)">Limpiar</button>
+                  <button class="btn btn--primary" type="button" (click)="save()" [disabled]="saving()">
+                    @if (saving()) {
+                      Guardando...
+                    } @else if (editingOrderId()) {
                       Actualizar orden
                     } @else {
                       Crear orden
                     }
                   </button>
-                </div>
-              </mat-card-content>
-            </mat-card>
-          } @else {
-            <mat-card appearance="outlined" class="purchases-card">
-              <mat-card-header>
-                <mat-card-title>Permisos</mat-card-title>
-                <mat-card-subtitle>Consulta habilitada, gestion restringida a admin.</mat-card-subtitle>
-              </mat-card-header>
-              <mat-card-content>
-                <p class="muted">
-                  Tu rol puede revisar ordenes y recepciones, pero la creacion o edicion se reserva
-                  a administracion.
+                }
+              </div>
+            </form>
+          </article>
+        </section>
+      }
+
+      @if (auth.isAdmin() && paymentDialogOpen() && selectedOrder(); as order) {
+        <div class="purchases-modal-backdrop" (click)="closePaymentDialog()"></div>
+        <section class="purchases-modal" role="dialog" aria-modal="true">
+          <article class="surface purchases-modal__panel">
+            <header class="purchases-modal__header">
+              <div class="page-header__copy">
+                <span class="page-kicker">Pago</span>
+                <h2 class="page-title">Registrar pago a proveedor</h2>
+                <p class="page-description">
+                  {{ order.reference || order.public_id || '#' + order.id }} · saldo actual
+                  {{ formatCurrency(order.balance_due) }}
                 </p>
-              </mat-card-content>
-            </mat-card>
-          }
-        </div>
-      </section>
+              </div>
+              <button class="btn btn--ghost" type="button" (click)="closePaymentDialog()">Cerrar</button>
+            </header>
+
+            @if (order.balance_due <= 0) {
+              <p class="muted">Esta compra ya no tiene saldo pendiente para nuevos pagos.</p>
+            } @else {
+              <div class="form-grid">
+                <div class="split">
+                  <div class="field">
+                    <label for="purchase-payment-method">Metodo</label>
+                    <select
+                      id="purchase-payment-method"
+                      #purchasePaymentMethodInput
+                      [value]="purchasePaymentMethod()"
+                      (change)="onPurchasePaymentMethodChange(purchasePaymentMethodInput.value)"
+                    >
+                      @for (paymentMethod of paymentMethods; track paymentMethod.value) {
+                        <option [value]="paymentMethod.value">{{ paymentMethod.label }}</option>
+                      }
+                    </select>
+                  </div>
+
+                  <div class="field">
+                    <label for="purchase-payment-amount">Monto</label>
+                    <input
+                      id="purchase-payment-amount"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      [value]="purchasePaymentAmount()"
+                      [disabled]="payingOrderId() === order.id"
+                      (input)="onPurchasePaymentAmountChange($event)"
+                    />
+                  </div>
+                </div>
+
+                <div class="split">
+                  <div class="field">
+                    <label for="purchase-payment-reference">Referencia</label>
+                    <input
+                      id="purchase-payment-reference"
+                      type="text"
+                      [value]="purchasePaymentReference()"
+                      [disabled]="payingOrderId() === order.id"
+                      (input)="onPurchasePaymentReferenceChange($event)"
+                    />
+                  </div>
+
+                  <div class="field">
+                    <label for="purchase-payment-estimate">Nuevo saldo estimado</label>
+                    <input
+                      id="purchase-payment-estimate"
+                      type="text"
+                      [value]="formatCurrency(estimatedBalanceAfterPayment(order))"
+                      readonly
+                    />
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="purchase-payment-notes">Notas internas</label>
+                  <textarea
+                    id="purchase-payment-notes"
+                    [value]="purchasePaymentNotes()"
+                    [disabled]="payingOrderId() === order.id"
+                    (input)="onPurchasePaymentNotesChange($event)"
+                  ></textarea>
+                </div>
+
+                @if (purchasePaymentMethod() === 'cash') {
+                  <p class="muted purchases-warning-text">
+                    Los pagos en efectivo requieren una caja abierta para el usuario actual.
+                  </p>
+                }
+
+                <div class="badge-row">
+                  <span class="pill pill--muted">Saldo actual {{ formatCurrency(order.balance_due) }}</span>
+                  <span class="pill">Nuevo saldo {{ formatCurrency(estimatedBalanceAfterPayment(order)) }}</span>
+                </div>
+
+                <div class="cta-row purchases-modal__actions">
+                  <button class="btn btn--ghost" type="button" (click)="closePaymentDialog()">Cancelar</button>
+                  <button class="btn" type="button" (click)="setOutstandingPaymentAmount(order)">
+                    Usar saldo pendiente
+                  </button>
+                  <button
+                    class="btn btn--primary"
+                    type="button"
+                    (click)="createPurchasePayment()"
+                    [disabled]="isPaymentDisabled(order)"
+                  >
+                    {{ payingOrderId() === order.id ? 'Guardando...' : 'Registrar pago' }}
+                  </button>
+                </div>
+              </div>
+            }
+          </article>
+        </section>
+      }
+
+      @if (auth.isAdmin() && returnDialogOpen() && selectedOrder(); as order) {
+        <div class="purchases-modal-backdrop" (click)="closeReturnDialog()"></div>
+        <section class="purchases-modal" role="dialog" aria-modal="true">
+          <article class="surface purchases-modal__panel purchases-modal__panel--wide">
+            <header class="purchases-modal__header">
+              <div class="page-header__copy">
+                <span class="page-kicker">Devolucion</span>
+                <h2 class="page-title">Registrar devolucion a proveedor</h2>
+                <p class="page-description">
+                  Selecciona cantidades pendientes por item y deja un motivo general.
+                </p>
+              </div>
+              <button class="btn btn--ghost" type="button" (click)="closeReturnDialog()">Cerrar</button>
+            </header>
+
+            @if (!hasReturnableItems(order)) {
+              <p class="muted">Todos los items recibidos ya fueron devueltos por completo.</p>
+            } @else {
+              <div class="form-grid">
+                <div class="purchase-return-items">
+                  @for (item of order.items; track item.id) {
+                    @if (item.remaining_returnable_quantity > 0) {
+                      <article class="purchase-return-item">
+                        <div class="purchase-detail-item__copy">
+                          <strong>{{ item.name_snapshot }}</strong>
+                          <span>
+                            Devuelto {{ formatNumber(item.returned_quantity) }} de
+                            {{ formatNumber(item.quantity_received) }}
+                          </span>
+                          <small>
+                            Restante {{ formatNumber(item.remaining_returnable_quantity) }} ·
+                            Costo {{ formatCurrency(item.unit_cost) }}
+                          </small>
+                        </div>
+
+                        <div class="purchase-return-item__entry">
+                          <div class="field">
+                            <label [for]="'purchase-return-' + item.id">Cantidad a devolver</label>
+                            <input
+                              [id]="'purchase-return-' + item.id"
+                              type="number"
+                              min="0"
+                              [max]="item.remaining_returnable_quantity"
+                              step="0.01"
+                              [value]="getReturnQuantity(item.id)"
+                              [disabled]="returningOrderId() === order.id"
+                              (input)="onReturnQuantityChange(item, $event)"
+                            />
+                          </div>
+
+                          <button
+                            class="btn"
+                            type="button"
+                            (click)="setMaxReturnQuantity(item)"
+                            [disabled]="returningOrderId() === order.id"
+                          >
+                            Maximo
+                          </button>
+                        </div>
+                      </article>
+                    }
+                  }
+                </div>
+
+                <div class="field">
+                  <label for="purchase-return-reason">Motivo general</label>
+                  <textarea
+                    id="purchase-return-reason"
+                    [value]="purchaseReturnReason()"
+                    (input)="onPurchaseReturnReasonChange($event)"
+                  ></textarea>
+                </div>
+
+                <div class="field">
+                  <label for="purchase-return-notes">Notas internas</label>
+                  <textarea
+                    id="purchase-return-notes"
+                    [value]="purchaseReturnNotes()"
+                    (input)="onPurchaseReturnNotesChange($event)"
+                  ></textarea>
+                </div>
+
+                <div class="badge-row">
+                  <span class="pill pill--muted">
+                    Items seleccionados {{ selectedReturnEntries().length }}
+                  </span>
+                  <span class="pill">Total devuelto {{ formatCurrency(selectedReturnTotal()) }}</span>
+                </div>
+
+                <div class="cta-row purchases-modal__actions">
+                  <button class="btn btn--ghost" type="button" (click)="closeReturnDialog()">Cancelar</button>
+                  <button
+                    class="btn btn--primary"
+                    type="button"
+                    (click)="createPurchaseReturn()"
+                    [disabled]="isPurchaseReturnDisabled(order)"
+                  >
+                    {{ returningOrderId() === order.id ? 'Guardando...' : 'Registrar devolucion' }}
+                  </button>
+                </div>
+              </div>
+            }
+          </article>
+        </section>
+      }
+
+      @if (auth.isAdmin() && cancellationDialogOpen() && selectedOrder(); as order) {
+        <div class="purchases-modal-backdrop" (click)="closeCancellationDialog()"></div>
+        <section class="purchases-modal" role="dialog" aria-modal="true">
+          <article class="surface purchases-modal__panel">
+            <header class="purchases-modal__header">
+              <div class="page-header__copy">
+                <span class="page-kicker">Anulacion</span>
+                <h2 class="page-title">Anular orden</h2>
+                <p class="page-description">
+                  {{ order.reference || order.public_id || '#' + order.id }} ·
+                  {{ labelForStatus(order.status) }}
+                </p>
+              </div>
+              <button class="btn btn--ghost" type="button" (click)="closeCancellationDialog()">
+                Cerrar
+              </button>
+            </header>
+
+            <div class="form-grid">
+              @if (order.payments_count > 0) {
+                <p class="muted purchases-warning-text">
+                  La anulacion queda bloqueada porque la compra ya tiene pagos registrados.
+                </p>
+              }
+
+              <div class="field">
+                <label for="purchase-cancellation-reason">Motivo de anulacion</label>
+                <textarea
+                  id="purchase-cancellation-reason"
+                  [value]="purchaseCancellationReason()"
+                  (input)="onPurchaseCancellationReasonChange($event)"
+                ></textarea>
+              </div>
+
+              @if (order.status === 'received') {
+                <p class="muted purchases-warning-text">
+                  Esta accion revertira la entrada de stock de la compra, siempre que el inventario actual alcance para hacer la reversa.
+                </p>
+              }
+
+              <div class="cta-row purchases-modal__actions">
+                <button class="btn btn--ghost" type="button" (click)="closeCancellationDialog()">
+                  Cancelar
+                </button>
+                <button
+                  class="btn"
+                  type="button"
+                  (click)="cancelSelectedOrder()"
+                  [disabled]="cancellingId() === order.id || order.payments_count > 0"
+                >
+                  {{ cancellingId() === order.id ? 'Procesando...' : 'Confirmar anulacion' }}
+                </button>
+              </div>
+            </div>
+          </article>
+        </section>
+      }
     </section>
   `,
   styles: `
@@ -878,13 +987,21 @@ import {
       align-content: start;
     }
 
-    .purchases-card {
-      border-radius: 1.5rem;
-      height: fit-content;
+    .purchases-block__header,
+    .purchases-modal__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
     }
 
-    .purchases-card mat-card-content:first-of-type {
-      margin-top: 1rem;
+    .purchases-section__title {
+      margin: 0.2rem 0 0;
+      color: var(--text-soft);
+      font-size: 1.35rem;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
     }
 
     .purchases-success {
@@ -901,7 +1018,7 @@ import {
       display: flex;
       flex-wrap: wrap;
       gap: 1rem;
-      align-items: center;
+      align-items: end;
     }
 
     .purchases-toolbar__search {
@@ -909,11 +1026,14 @@ import {
       flex: 1 1 20rem;
     }
 
+    .purchases-toolbar__filter {
+      min-width: 12rem;
+    }
+
     .purchase-order-list,
     .purchase-detail-items,
     .purchase-form-items,
     .purchase-payment-history,
-    .purchase-payment-summary,
     .purchase-return-items,
     .purchase-return-history {
       display: grid;
@@ -928,9 +1048,9 @@ import {
     .purchase-return-history-item {
       display: grid;
       gap: 0.75rem;
-      border: 1px solid var(--border);
-      border-radius: 1rem;
-      background: rgba(15, 76, 129, 0.03);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 1.25rem;
+      background: rgba(246, 249, 252, 0.88);
       padding: 1rem;
     }
 
@@ -944,8 +1064,8 @@ import {
 
     .purchase-order-row:hover,
     .purchase-order-row.is-selected {
-      border-color: rgba(15, 76, 129, 0.35);
-      background: rgba(15, 76, 129, 0.08);
+      border-color: rgba(22, 138, 87, 0.26);
+      background: rgba(22, 138, 87, 0.06);
       transform: translateY(-1px);
     }
 
@@ -971,6 +1091,15 @@ import {
       min-width: 0;
     }
 
+    .purchase-order-meta {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .purchase-order-meta span {
+      color: var(--text-muted);
+    }
+
     .purchase-order-row__copy span,
     .purchase-order-row__copy small,
     .purchase-detail-item__copy span,
@@ -988,20 +1117,16 @@ import {
       flex: 1;
     }
 
-    .purchase-payment-summary {
+    .purchase-summary-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+      display: grid;
+      gap: 0.85rem;
     }
 
-    .purchase-payment-summary__card {
+    .purchase-summary-card {
       display: grid;
       gap: 0.25rem;
       border-radius: 1rem;
-    }
-
-    .purchase-payment-form-grid {
-      display: grid;
-      gap: 1rem;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .purchases-form-grid,
@@ -1027,27 +1152,27 @@ import {
       font-size: 1.15rem;
     }
 
-    .purchase-chip-received {
+    .purchase-pill-received {
       background: rgba(19, 128, 77, 0.14);
       color: #166534;
     }
 
-    .purchase-chip-cancelled {
+    .purchase-pill-cancelled {
       background: rgba(148, 28, 28, 0.14);
       color: #991b1b;
     }
 
-    .purchase-payment-chip-partial {
+    .purchase-payment-pill-partial {
       background: rgba(180, 83, 9, 0.14);
       color: #92400e;
     }
 
-    .purchase-payment-chip-paid {
+    .purchase-payment-pill-paid {
       background: rgba(19, 128, 77, 0.14);
       color: #166534;
     }
 
-    .purchase-payment-chip-credit {
+    .purchase-payment-pill-credit {
       background: rgba(15, 76, 129, 0.14);
       color: #0f4c81;
     }
@@ -1056,10 +1181,62 @@ import {
       color: var(--text-muted);
     }
 
+    .purchases-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(9, 14, 25, 0.42);
+    }
+
+    .purchases-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 61;
+      display: grid;
+      place-items: center;
+      padding: 1.25rem;
+    }
+
+    .purchases-modal__panel {
+      width: min(100%, 44rem);
+      max-height: calc(100vh - 2.5rem);
+      overflow: auto;
+    }
+
+    .purchases-modal__panel--wide {
+      width: min(100%, 68rem);
+    }
+
+    .purchases-modal__actions {
+      justify-content: flex-end;
+    }
+
+    .purchases-steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-bottom: 1rem;
+    }
+
+    .purchases-step {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 999px;
+      background: rgba(246, 249, 252, 0.95);
+      color: var(--text-muted);
+      font-weight: 700;
+      min-height: 2.7rem;
+      padding: 0 1rem;
+    }
+
+    .purchases-step.is-active {
+      border-color: rgba(22, 138, 87, 0.26);
+      background: rgba(22, 138, 87, 0.1);
+      color: var(--primary-strong);
+    }
+
     @media (max-width: 1180px) {
       .purchases-layout,
-      .purchase-payment-form-grid,
-      .purchase-payment-summary,
+      .purchase-summary-grid,
       .purchases-form-grid,
       .purchase-form-item__grid {
         grid-template-columns: 1fr;
@@ -1082,6 +1259,11 @@ export class PurchasesPageComponent {
   protected readonly cancellingId = signal<number | null>(null);
   protected readonly payingOrderId = signal<number | null>(null);
   protected readonly returningOrderId = signal<number | null>(null);
+  protected readonly orderDialogOpen = signal(false);
+  protected readonly paymentDialogOpen = signal(false);
+  protected readonly returnDialogOpen = signal(false);
+  protected readonly cancellationDialogOpen = signal(false);
+  protected readonly orderStep = signal<'general' | 'items'>('general');
   protected readonly error = signal<string | null>(null);
   protected readonly successMessage = signal<string | null>(null);
   protected readonly legacyNotice = signal<string | null>(null);
@@ -1261,6 +1443,30 @@ export class PurchasesPageComponent {
     void this.loadOrders();
   }
 
+  protected openCreateOrderDialog(): void {
+    this.resetForm(false);
+    this.orderStep.set('general');
+    this.orderDialogOpen.set(true);
+  }
+
+  protected closeOrderDialog(): void {
+    this.orderDialogOpen.set(false);
+    this.orderStep.set('general');
+    this.resetForm(false);
+  }
+
+  protected setOrderStep(step: 'general' | 'items'): void {
+    this.orderStep.set(step);
+  }
+
+  protected nextOrderStep(): void {
+    this.orderStep.set('items');
+  }
+
+  protected previousOrderStep(): void {
+    this.orderStep.set('general');
+  }
+
   protected selectOrder(order: PurchaseOrder): void {
     this.selectedOrderId.set(order.id);
     this.purchaseCancellationReason.set(order.cancellation_reason ?? '');
@@ -1277,6 +1483,8 @@ export class PurchasesPageComponent {
     event.stopPropagation();
     this.selectedOrderId.set(order.id);
     this.editingOrderId.set(order.id);
+    this.orderStep.set('general');
+    this.orderDialogOpen.set(true);
     this.purchaseCancellationReason.set(order.cancellation_reason ?? '');
     this.resetPurchasePaymentForm(order);
     this.resetPurchaseReturnForm(order);
@@ -1286,6 +1494,7 @@ export class PurchasesPageComponent {
   protected prepareCancellation(order: PurchaseOrder, event: Event): void {
     event.stopPropagation();
     this.selectOrder(order);
+    this.cancellationDialogOpen.set(true);
 
     if (this.purchaseCancellationReason().trim() !== '') {
       return;
@@ -1348,6 +1557,8 @@ export class PurchasesPageComponent {
           : 'La orden de compra fue creada correctamente.',
       );
       this.selectedOrderId.set(purchaseOrder.id);
+      this.orderDialogOpen.set(false);
+      this.orderStep.set('general');
       this.editingOrderId.set(null);
       this.resetForm(false);
       await this.loadOrders();
@@ -1363,8 +1574,8 @@ export class PurchasesPageComponent {
     this.purchaseCancellationReason.set(target.value);
   }
 
-  protected onPurchasePaymentMethodChange(value: PurchasePaymentMethod): void {
-    this.purchasePaymentMethod.set(value ?? 'transfer');
+  protected onPurchasePaymentMethodChange(value: PurchasePaymentMethod | string | null): void {
+    this.purchasePaymentMethod.set((value as PurchasePaymentMethod) ?? 'transfer');
   }
 
   protected onPurchasePaymentAmountChange(event: Event): void {
@@ -1422,6 +1633,7 @@ export class PurchasesPageComponent {
         `El pago ${payment.public_id || '#' + payment.id} fue registrado por ${this.formatCurrency(payment.amount)} en ${this.formatPaymentMethod(payment.method).toLowerCase()}.`,
       );
 
+      this.paymentDialogOpen.set(false);
       await this.loadOrders();
     } catch (error) {
       this.error.set(resolveApiError(error));
@@ -1459,6 +1671,7 @@ export class PurchasesPageComponent {
           : `La orden ${cancelledOrder.reference || cancelledOrder.public_id || '#' + cancelledOrder.id} fue anulada correctamente.`,
       );
       this.selectedOrderId.set(cancelledOrder.id);
+      this.cancellationDialogOpen.set(false);
       this.editingOrderId.set(null);
       this.purchaseCancellationReason.set(cancelledOrder.cancellation_reason ?? '');
       this.resetForm(false);
@@ -1545,6 +1758,7 @@ export class PurchasesPageComponent {
         `La devolucion ${purchaseReturn.public_id || '#' + purchaseReturn.id} fue registrada por ${this.formatCurrency(purchaseReturn.return_total)}.`,
       );
 
+      this.returnDialogOpen.set(false);
       await Promise.all([this.loadOrders(), this.loadProducts()]);
     } catch (error) {
       this.error.set(resolveApiError(error));
@@ -1571,6 +1785,31 @@ export class PurchasesPageComponent {
       this.resetPurchasePaymentForm(nextOrder);
       this.resetPurchaseReturnForm(nextOrder);
     }
+  }
+
+  protected openPaymentDialog(order: PurchaseOrder): void {
+    this.selectOrder(order);
+    this.paymentDialogOpen.set(true);
+  }
+
+  protected closePaymentDialog(): void {
+    this.paymentDialogOpen.set(false);
+    this.resetPurchasePaymentForm(this.selectedOrder());
+  }
+
+  protected openReturnDialog(order: PurchaseOrder): void {
+    this.selectOrder(order);
+    this.returnDialogOpen.set(true);
+  }
+
+  protected closeReturnDialog(): void {
+    this.returnDialogOpen.set(false);
+    this.resetPurchaseReturnForm(this.selectedOrder());
+  }
+
+  protected closeCancellationDialog(): void {
+    this.cancellationDialogOpen.set(false);
+    this.purchaseCancellationReason.set(this.selectedOrder()?.cancellation_reason ?? '');
   }
 
   protected addItemRow(): void {

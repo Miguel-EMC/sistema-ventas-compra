@@ -56,7 +56,7 @@ import { Asset, AssetCategory, AssetCategoryPayload, AssetPayload } from './asse
         </article>
       </section>
 
-      <section class="admin-layout">
+      <section class="stack">
         <article class="surface stack">
           <div class="toolbar">
             <div class="field field--search">
@@ -89,8 +89,11 @@ import { Asset, AssetCategory, AssetCategoryPayload, AssetPayload } from './asse
               </button>
               <button class="btn" type="button" (click)="loadAssets()">Refrescar</button>
               @if (isAdmin()) {
-                <button class="btn btn--ghost" type="button" (click)="resetAssetForm()">
-                  Nuevo
+                <button class="btn btn--ghost" type="button" (click)="openCategoryDialog()">
+                  Categorias
+                </button>
+                <button class="btn btn--primary" type="button" (click)="openCreateAssetDialog()">
+                  Nuevo activo
                 </button>
               }
             </div>
@@ -103,7 +106,7 @@ import { Asset, AssetCategory, AssetCategoryPayload, AssetPayload } from './asse
           @if (assets().length === 0) {
             <p class="muted">
               Todavia no hay activos cargados en el dominio nuevo. Registra el primero desde el
-              panel lateral.
+              flujo de alta.
             </p>
           } @else {
             <div class="table-list">
@@ -140,28 +143,55 @@ import { Asset, AssetCategory, AssetCategoryPayload, AssetPayload } from './asse
             </div>
           }
         </article>
+      </section>
 
-        <div class="stack">
-          @if (isAdmin()) {
-            <article class="surface stack">
-              <div class="page-header">
-                <div class="page-header__copy">
-                  <span class="page-kicker">Formulario</span>
-                  <h2 class="page-title">
-                    @if (editingAssetId()) {
-                      Editar activo
-                    } @else {
-                      Registrar activo
-                    }
-                  </h2>
-                  <p class="page-description">
-                    Aqui se registran bienes internos del negocio. Si algo se vende en caja, no va
-                    en este modulo: va en Productos.
-                  </p>
-                </div>
+      @if (!isAdmin()) {
+        <article class="surface stack">
+          <span class="page-kicker">Solo lectura</span>
+          <h2 class="page-title">Tu rol puede consultar activos.</h2>
+          <p class="page-description">
+            Las altas y cambios de activos internos quedan reservados a administracion, pero la
+            consulta ya esta disponible desde el frontend nuevo.
+          </p>
+        </article>
+      }
+
+      @if (isAdmin() && assetDialogOpen()) {
+        <div class="assets-modal-backdrop" (click)="closeAssetDialog()"></div>
+        <section class="assets-modal" role="dialog" aria-modal="true">
+          <article class="surface assets-modal__panel">
+            <header class="assets-modal__header">
+              <div class="page-header__copy">
+                <span class="page-kicker">Activo</span>
+                <h2 class="page-title">{{ editingAssetId() ? 'Editar activo' : 'Nuevo activo' }}</h2>
+                <p class="page-description">
+                  Separa el registro del listado para mantener la pantalla principal limpia.
+                </p>
               </div>
+              <button class="btn btn--ghost" type="button" (click)="closeAssetDialog()">Cerrar</button>
+            </header>
 
-              <form class="form-grid" [formGroup]="assetForm" (ngSubmit)="submitAsset()">
+            <div class="assets-steps">
+              <button
+                class="assets-step"
+                type="button"
+                [class.is-active]="assetStep() === 'details'"
+                (click)="setAssetStep('details')"
+              >
+                Detalles
+              </button>
+              <button
+                class="assets-step"
+                type="button"
+                [class.is-active]="assetStep() === 'inventory'"
+                (click)="setAssetStep('inventory')"
+              >
+                Estado y cantidad
+              </button>
+            </div>
+
+            <form class="form-grid" [formGroup]="assetForm" (ngSubmit)="submitAsset()">
+              @if (assetStep() === 'details') {
                 <div class="split">
                   <div class="field">
                     <label for="asset-name">Nombre</label>
@@ -186,6 +216,20 @@ import { Asset, AssetCategory, AssetCategoryPayload, AssetPayload } from './asse
                   </div>
 
                   <div class="field">
+                    <label for="asset-acquired-at">Fecha de adquisicion</label>
+                    <input id="asset-acquired-at" type="date" formControlName="acquired_at" />
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="asset-description">Descripcion</label>
+                  <textarea id="asset-description" formControlName="description"></textarea>
+                </div>
+              }
+
+              @if (assetStep() === 'inventory') {
+                <div class="split">
+                  <div class="field">
                     <label for="asset-status">Estado</label>
                     <select id="asset-status" formControlName="status">
                       @for (status of assetStatuses; track status.value) {
@@ -193,41 +237,36 @@ import { Asset, AssetCategory, AssetCategoryPayload, AssetPayload } from './asse
                       }
                     </select>
                   </div>
-                </div>
 
-                <div class="split">
                   <div class="field">
                     <label for="asset-quantity">Cantidad</label>
                     <input id="asset-quantity" type="number" min="0" step="0.01" formControlName="quantity" />
                   </div>
-
-                  <div class="field">
-                    <label for="asset-acquisition-cost">Costo de adquisicion</label>
-                    <input
-                      id="asset-acquisition-cost"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      formControlName="acquisition_cost"
-                    />
-                  </div>
                 </div>
 
                 <div class="field">
-                  <label for="asset-acquired-at">Fecha de adquisicion</label>
-                  <input id="asset-acquired-at" type="date" formControlName="acquired_at" />
+                  <label for="asset-acquisition-cost">Costo de adquisicion</label>
+                  <input
+                    id="asset-acquisition-cost"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    formControlName="acquisition_cost"
+                  />
                 </div>
+              }
 
-                <div class="field">
-                  <label for="asset-description">Descripcion</label>
-                  <textarea id="asset-description" formControlName="description"></textarea>
-                </div>
+              @if (error()) {
+                <p class="alert alert--danger">{{ error() }}</p>
+              }
 
-                @if (error()) {
-                  <p class="alert alert--danger">{{ error() }}</p>
-                }
-
-                <div class="cta-row">
+              <div class="cta-row assets-modal__actions">
+                <button class="btn btn--ghost" type="button" (click)="previousAssetStep()" [disabled]="assetStep() === 'details'">
+                  Atras
+                </button>
+                @if (assetStep() !== 'inventory') {
+                  <button class="btn" type="button" (click)="nextAssetStep()">Siguiente</button>
+                } @else {
                   <button class="btn btn--primary" type="submit" [disabled]="savingAsset()">
                     @if (savingAsset()) {
                       Guardando...
@@ -237,90 +276,145 @@ import { Asset, AssetCategory, AssetCategoryPayload, AssetPayload } from './asse
                       Crear activo
                     }
                   </button>
-                  <button class="btn btn--ghost" type="button" (click)="resetAssetForm()">
-                    Limpiar
-                  </button>
-                </div>
-              </form>
-            </article>
-
-            <article class="surface stack">
-              <div class="page-header">
-                <div class="page-header__copy">
-                  <span class="page-kicker">Categorias</span>
-                  <h2 class="page-title">Organizar activos internos</h2>
-                  <p class="page-description">
-                    Usa categorias como tecnologia, mobiliario o insumos para no mezclar activos
-                    con el catalogo de venta.
-                  </p>
-                </div>
-              </div>
-
-              <form class="form-grid" [formGroup]="categoryForm" (ngSubmit)="submitCategory()">
-                <div class="field">
-                  <label for="asset-category-name">Nombre</label>
-                  <input id="asset-category-name" type="text" formControlName="name" />
-                </div>
-
-                <div class="field">
-                  <label for="asset-category-description">Descripcion</label>
-                  <textarea id="asset-category-description" formControlName="description"></textarea>
-                </div>
-
-                @if (categoryError()) {
-                  <p class="alert alert--danger">{{ categoryError() }}</p>
-                }
-
-                <div class="cta-row">
-                  <button class="btn btn--primary" type="submit" [disabled]="savingCategory()">
-                    @if (savingCategory()) {
-                      Guardando...
-                    } @else if (editingCategoryId()) {
-                      Actualizar categoria
-                    } @else {
-                      Crear categoria
-                    }
-                  </button>
-                  <button class="btn btn--ghost" type="button" (click)="resetCategoryForm()">
-                    Limpiar
-                  </button>
-                </div>
-              </form>
-
-              <div class="table-list">
-                @for (category of categories(); track category.id) {
-                  <article class="table-list__row">
-                    <div class="table-list__copy">
-                      <strong>{{ category.name }}</strong>
-                      <p>{{ category.description || 'Sin descripcion' }}</p>
-                      <small>Slug: {{ category.slug }}</small>
-                    </div>
-
-                    <div class="table-list__actions">
-                      <button class="btn btn--ghost" type="button" (click)="editCategory(category)">
-                        Editar
-                      </button>
-                      <button class="btn" type="button" (click)="deleteCategory(category)">
-                        Eliminar
-                      </button>
-                    </div>
-                  </article>
                 }
               </div>
-            </article>
-          } @else {
-            <article class="surface stack">
-              <span class="page-kicker">Solo lectura</span>
-              <h2 class="page-title">Tu rol puede consultar activos.</h2>
-              <p class="page-description">
-                Las altas y cambios de activos internos quedan reservados a administracion, pero la
-                consulta ya esta disponible desde el frontend nuevo.
-              </p>
-            </article>
-          }
-        </div>
-      </section>
+            </form>
+          </article>
+        </section>
+      }
+
+      @if (isAdmin() && categoryDialogOpen()) {
+        <div class="assets-modal-backdrop" (click)="closeCategoryDialog()"></div>
+        <section class="assets-modal" role="dialog" aria-modal="true">
+          <article class="surface assets-modal__panel">
+            <header class="assets-modal__header">
+              <div class="page-header__copy">
+                <span class="page-kicker">Categorias</span>
+                <h2 class="page-title">Gestionar categorias</h2>
+                <p class="page-description">
+                  Las categorias se administran en un flujo separado para no saturar el modulo.
+                </p>
+              </div>
+              <button class="btn btn--ghost" type="button" (click)="closeCategoryDialog()">Cerrar</button>
+            </header>
+
+            <form class="form-grid" [formGroup]="categoryForm" (ngSubmit)="submitCategory()">
+              <div class="field">
+                <label for="asset-category-name">Nombre</label>
+                <input id="asset-category-name" type="text" formControlName="name" />
+              </div>
+
+              <div class="field">
+                <label for="asset-category-description">Descripcion</label>
+                <textarea id="asset-category-description" formControlName="description"></textarea>
+              </div>
+
+              @if (categoryError()) {
+                <p class="alert alert--danger">{{ categoryError() }}</p>
+              }
+
+              <div class="cta-row">
+                <button class="btn btn--primary" type="submit" [disabled]="savingCategory()">
+                  @if (savingCategory()) {
+                    Guardando...
+                  } @else if (editingCategoryId()) {
+                    Actualizar categoria
+                  } @else {
+                    Crear categoria
+                  }
+                </button>
+                <button class="btn btn--ghost" type="button" (click)="resetCategoryForm()">
+                  Limpiar
+                </button>
+              </div>
+            </form>
+
+            <div class="table-list">
+              @for (category of categories(); track category.id) {
+                <article class="table-list__row">
+                  <div class="table-list__copy">
+                    <strong>{{ category.name }}</strong>
+                    <p>{{ category.description || 'Sin descripcion' }}</p>
+                    <small>Slug: {{ category.slug }}</small>
+                  </div>
+
+                  <div class="table-list__actions">
+                    <button class="btn btn--ghost" type="button" (click)="editCategory(category)">
+                      Editar
+                    </button>
+                    <button class="btn" type="button" (click)="deleteCategory(category)">
+                      Eliminar
+                    </button>
+                  </div>
+                </article>
+              }
+            </div>
+          </article>
+        </section>
+      }
     </section>
+  `,
+  styles: `
+    .assets-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(15, 23, 42, 0.28);
+      backdrop-filter: blur(4px);
+    }
+
+    .assets-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 61;
+      display: grid;
+      place-items: center;
+      padding: 1.25rem;
+    }
+
+    .assets-modal__panel {
+      width: min(100%, 46rem);
+      max-height: calc(100vh - 2.5rem);
+      overflow-y: auto;
+      padding: 1.35rem;
+    }
+
+    .assets-modal__header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .assets-steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+    }
+
+    .assets-step {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--text-muted);
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      min-height: 2.4rem;
+      padding: 0 0.95rem;
+    }
+
+    .assets-step.is-active {
+      border-color: rgba(22, 138, 87, 0.16);
+      background: rgba(22, 138, 87, 0.08);
+      color: var(--primary-strong);
+    }
+
+    .assets-modal__actions {
+      justify-content: space-between;
+    }
   `,
 })
 export class AssetsPageComponent {
@@ -344,6 +438,9 @@ export class AssetsPageComponent {
   protected readonly editingAssetId = signal<number | null>(null);
   protected readonly editingCategoryId = signal<number | null>(null);
   protected readonly legacyNotice = signal<string | null>(null);
+  protected readonly assetDialogOpen = signal(false);
+  protected readonly categoryDialogOpen = signal(false);
+  protected readonly assetStep = signal<'details' | 'inventory'>('details');
 
   protected readonly totalUnits = computed(() =>
     this.assets().reduce((sum, asset) => sum + asset.quantity, 0),
@@ -421,18 +518,9 @@ export class AssetsPageComponent {
   }
 
   protected editAsset(asset: Asset): void {
-    this.editingAssetId.set(asset.id);
-    this.error.set(null);
-    this.assetForm.patchValue({
-      name: asset.name,
-      category_id: String(asset.category?.id ?? ''),
-      code: asset.code ?? '',
-      status: asset.status,
-      quantity: asset.quantity,
-      acquisition_cost: asset.acquisition_cost?.toString() ?? '',
-      acquired_at: asset.acquired_at ?? '',
-      description: asset.description ?? '',
-    });
+    this.fillAssetForm(asset);
+    this.assetStep.set('details');
+    this.assetDialogOpen.set(true);
   }
 
   protected resetAssetForm(): void {
@@ -450,9 +538,21 @@ export class AssetsPageComponent {
     });
   }
 
+  protected openCreateAssetDialog(): void {
+    this.resetAssetForm();
+    this.assetStep.set('details');
+    this.assetDialogOpen.set(true);
+  }
+
+  protected closeAssetDialog(): void {
+    this.assetDialogOpen.set(false);
+    this.error.set(null);
+  }
+
   protected editCategory(category: AssetCategory): void {
     this.editingCategoryId.set(category.id);
     this.categoryError.set(null);
+    this.categoryDialogOpen.set(true);
     this.categoryForm.patchValue({
       name: category.name,
       description: category.description ?? '',
@@ -466,6 +566,32 @@ export class AssetsPageComponent {
       name: '',
       description: '',
     });
+  }
+
+  protected openCategoryDialog(): void {
+    this.resetCategoryForm();
+    this.categoryDialogOpen.set(true);
+  }
+
+  protected closeCategoryDialog(): void {
+    this.categoryDialogOpen.set(false);
+    this.categoryError.set(null);
+  }
+
+  protected setAssetStep(step: 'details' | 'inventory'): void {
+    this.assetStep.set(step);
+  }
+
+  protected nextAssetStep(): void {
+    if (this.assetStep() === 'details') {
+      this.assetStep.set('inventory');
+    }
+  }
+
+  protected previousAssetStep(): void {
+    if (this.assetStep() === 'inventory') {
+      this.assetStep.set('details');
+    }
   }
 
   protected async submitAsset(): Promise<void> {
@@ -486,6 +612,7 @@ export class AssetsPageComponent {
         await this.api.createAsset(payload);
       }
 
+      this.assetDialogOpen.set(false);
       this.resetAssetForm();
       await this.loadAssets();
     } catch (error) {
@@ -513,6 +640,7 @@ export class AssetsPageComponent {
         await this.api.createCategory(payload);
       }
 
+      this.categoryDialogOpen.set(false);
       this.resetCategoryForm();
       await Promise.all([this.loadCategories(), this.loadAssets()]);
     } catch (error) {
@@ -626,6 +754,21 @@ export class AssetsPageComponent {
     const normalized = value?.trim() ?? '';
 
     return normalized === '' ? null : normalized;
+  }
+
+  private fillAssetForm(asset: Asset): void {
+    this.editingAssetId.set(asset.id);
+    this.error.set(null);
+    this.assetForm.patchValue({
+      name: asset.name,
+      category_id: String(asset.category?.id ?? ''),
+      code: asset.code ?? '',
+      status: asset.status,
+      quantity: asset.quantity,
+      acquisition_cost: asset.acquisition_cost?.toString() ?? '',
+      acquired_at: asset.acquired_at ?? '',
+      description: asset.description ?? '',
+    });
   }
 
   private applyLegacyPrefillFromQuery(): void {

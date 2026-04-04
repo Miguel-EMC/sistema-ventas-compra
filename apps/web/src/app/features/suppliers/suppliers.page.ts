@@ -56,7 +56,7 @@ import { SuppliersApiService } from './suppliers.api';
         </article>
       </section>
 
-      <section class="admin-layout">
+      <section class="stack">
         <article class="surface stack">
           <div class="toolbar">
             <div class="field field--search">
@@ -73,7 +73,7 @@ import { SuppliersApiService } from './suppliers.api';
             <div class="cta-row">
               <button class="btn" type="button" (click)="loadSuppliers()">Refrescar</button>
               @if (isAdmin()) {
-                <button class="btn btn--ghost" type="button" (click)="resetForm()">Nuevo</button>
+                <button class="btn btn--primary" type="button" (click)="openCreateDialog()">Nuevo proveedor</button>
               }
             </div>
           </div>
@@ -85,7 +85,7 @@ import { SuppliersApiService } from './suppliers.api';
           @if (suppliers().length === 0) {
             <p class="muted">
               Todavia no hay proveedores migrados en la plataforma nueva. Puedes registrar el
-              primero desde el formulario lateral.
+              primero desde el flujo de alta.
             </p>
           } @else {
             <div class="table-list">
@@ -123,106 +123,199 @@ import { SuppliersApiService } from './suppliers.api';
             </div>
           }
         </article>
+      </section>
 
-        @if (isAdmin()) {
-          <article class="surface stack">
-            <div class="page-header">
+      @if (!isAdmin()) {
+        <article class="surface stack">
+          <span class="page-kicker">Solo lectura</span>
+          <h2 class="page-title">Tu rol puede consultar la base de proveedores.</h2>
+          <p class="page-description">
+            La gestion de altas y cambios queda reservada a administracion, pero la consulta ya
+            se puede hacer desde el panel nuevo.
+          </p>
+        </article>
+      }
+
+      @if (isAdmin() && supplierDialogOpen()) {
+        <div class="suppliers-modal-backdrop" (click)="closeDialog()"></div>
+        <section class="suppliers-modal" role="dialog" aria-modal="true">
+          <article class="surface suppliers-modal__panel">
+            <header class="suppliers-modal__header">
               <div class="page-header__copy">
-                <span class="page-kicker">Formulario</span>
-                <h2 class="page-title">
-                  @if (editingId()) {
-                    Editar proveedor
-                  } @else {
-                    Crear proveedor
-                  }
-                </h2>
+                <span class="page-kicker">Proveedor</span>
+                <h2 class="page-title">{{ editingId() ? 'Editar proveedor' : 'Nuevo proveedor' }}</h2>
                 <p class="page-description">
-                  Este bloque deja lista la base de proveedores para integrarla luego con compras,
-                  costos y reposicion de stock.
+                  Mantiene el alta separada del listado para que compras y abastecimiento se lean mejor.
                 </p>
               </div>
+              <button class="btn btn--ghost" type="button" (click)="closeDialog()">Cerrar</button>
+            </header>
+
+            <div class="suppliers-steps">
+              <button
+                class="suppliers-step"
+                type="button"
+                [class.is-active]="supplierStep() === 'identity'"
+                (click)="setSupplierStep('identity')"
+              >
+                Identidad
+              </button>
+              <button
+                class="suppliers-step"
+                type="button"
+                [class.is-active]="supplierStep() === 'contact'"
+                (click)="setSupplierStep('contact')"
+              >
+                Contacto
+              </button>
             </div>
 
             <form class="form-grid" [formGroup]="form" (ngSubmit)="submit()">
-              <div class="split">
-                <div class="field">
-                  <label for="supplier-name">Nombre</label>
-                  <input id="supplier-name" type="text" formControlName="name" />
+              @if (supplierStep() === 'identity') {
+                <div class="split">
+                  <div class="field">
+                    <label for="supplier-name">Nombre</label>
+                    <input id="supplier-name" type="text" formControlName="name" />
+                  </div>
+
+                  <div class="field">
+                    <label for="supplier-document-type">Tipo de documento</label>
+                    <select id="supplier-document-type" formControlName="document_type">
+                      <option value="">Sin documento</option>
+                      @for (option of documentTypes; track option.value) {
+                        <option [value]="option.value">{{ option.label }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+
+                <div class="split">
+                  <div class="field">
+                    <label for="supplier-document-number">Numero de documento</label>
+                    <input id="supplier-document-number" type="text" formControlName="document_number" />
+                  </div>
+
+                  <div class="field">
+                    <label for="supplier-active">Estado</label>
+                    <select id="supplier-active" formControlName="is_active">
+                      <option [ngValue]="true">Activo</option>
+                      <option [ngValue]="false">Inactivo</option>
+                    </select>
+                  </div>
+                </div>
+              }
+
+              @if (supplierStep() === 'contact') {
+                <div class="split">
+                  <div class="field">
+                    <label for="supplier-email">Correo</label>
+                    <input id="supplier-email" type="email" formControlName="email" />
+                  </div>
+
+                  <div class="field">
+                    <label for="supplier-phone">Telefono</label>
+                    <input id="supplier-phone" type="text" formControlName="phone" />
+                  </div>
                 </div>
 
                 <div class="field">
-                  <label for="supplier-document-type">Tipo de documento</label>
-                  <select id="supplier-document-type" formControlName="document_type">
-                    <option value="">Sin documento</option>
-                    @for (option of documentTypes; track option.value) {
-                      <option [value]="option.value">{{ option.label }}</option>
-                    }
-                  </select>
+                  <label for="supplier-address">Direccion</label>
+                  <textarea id="supplier-address" formControlName="address"></textarea>
                 </div>
-              </div>
-
-              <div class="split">
-                <div class="field">
-                  <label for="supplier-document-number">Numero de documento</label>
-                  <input id="supplier-document-number" type="text" formControlName="document_number" />
-                </div>
-
-                <div class="field">
-                  <label for="supplier-email">Correo</label>
-                  <input id="supplier-email" type="email" formControlName="email" />
-                </div>
-              </div>
-
-              <div class="split">
-                <div class="field">
-                  <label for="supplier-phone">Telefono</label>
-                  <input id="supplier-phone" type="text" formControlName="phone" />
-                </div>
-
-                <div class="field">
-                  <label for="supplier-active">Estado</label>
-                  <select id="supplier-active" formControlName="is_active">
-                    <option [ngValue]="true">Activo</option>
-                    <option [ngValue]="false">Inactivo</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="field">
-                <label for="supplier-address">Direccion</label>
-                <textarea id="supplier-address" formControlName="address"></textarea>
-              </div>
+              }
 
               @if (error()) {
                 <p class="alert alert--danger">{{ error() }}</p>
               }
 
-              <div class="cta-row">
-                <button class="btn btn--primary" type="submit" [disabled]="saving()">
-                  @if (saving()) {
-                    Guardando...
-                  } @else if (editingId()) {
-                    Actualizar proveedor
-                  } @else {
-                    Crear proveedor
-                  }
+              <div class="cta-row suppliers-modal__actions">
+                <button
+                  class="btn btn--ghost"
+                  type="button"
+                  (click)="previousSupplierStep()"
+                  [disabled]="supplierStep() === 'identity'"
+                >
+                  Atras
                 </button>
-                <button class="btn btn--ghost" type="button" (click)="resetForm()">Limpiar</button>
+                @if (supplierStep() !== 'contact') {
+                  <button class="btn" type="button" (click)="nextSupplierStep()">Siguiente</button>
+                } @else {
+                  <button class="btn btn--ghost" type="button" (click)="resetForm()">Limpiar</button>
+                  <button class="btn btn--primary" type="submit" [disabled]="saving()">
+                    @if (saving()) {
+                      Guardando...
+                    } @else if (editingId()) {
+                      Actualizar proveedor
+                    } @else {
+                      Crear proveedor
+                    }
+                  </button>
+                }
               </div>
             </form>
           </article>
-        } @else {
-          <article class="surface stack">
-            <span class="page-kicker">Solo lectura</span>
-            <h2 class="page-title">Tu rol puede consultar la base de proveedores.</h2>
-            <p class="page-description">
-              La gestion de altas y cambios queda reservada a administracion, pero la consulta ya
-              se puede hacer desde el panel nuevo.
-            </p>
-          </article>
-        }
-      </section>
+        </section>
+      }
     </section>
+  `,
+  styles: `
+    .suppliers-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(15, 23, 42, 0.28);
+    }
+
+    .suppliers-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 61;
+      display: grid;
+      place-items: center;
+      padding: 1.25rem;
+    }
+
+    .suppliers-modal__panel {
+      width: min(100%, 52rem);
+      max-height: calc(100vh - 2.5rem);
+      overflow: auto;
+    }
+
+    .suppliers-modal__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .suppliers-steps {
+      display: flex;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .suppliers-step {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 999px;
+      background: rgba(246, 249, 252, 0.95);
+      color: var(--text-muted);
+      font-weight: 700;
+      min-height: 2.7rem;
+      padding: 0 1rem;
+    }
+
+    .suppliers-step.is-active {
+      border-color: rgba(22, 138, 87, 0.26);
+      background: rgba(22, 138, 87, 0.1);
+      color: var(--primary-strong);
+    }
+
+    .suppliers-modal__actions {
+      justify-content: flex-end;
+    }
   `,
 })
 export class SuppliersPageComponent {
@@ -240,6 +333,8 @@ export class SuppliersPageComponent {
   protected readonly error = signal<string | null>(null);
   protected readonly editingId = signal<number | null>(null);
   protected readonly legacyNotice = signal<string | null>(null);
+  protected readonly supplierDialogOpen = signal(false);
+  protected readonly supplierStep = signal<'identity' | 'contact'>('identity');
 
   protected readonly activeSuppliersCount = computed(
     () => this.suppliers().filter((supplier) => supplier.is_active).length,
@@ -287,6 +382,8 @@ export class SuppliersPageComponent {
 
   protected editSupplier(supplier: BusinessPartner): void {
     this.editingId.set(supplier.id);
+    this.supplierDialogOpen.set(true);
+    this.supplierStep.set('identity');
     this.error.set(null);
     this.form.patchValue({
       name: supplier.name,
@@ -313,6 +410,30 @@ export class SuppliersPageComponent {
     });
   }
 
+  protected openCreateDialog(): void {
+    this.resetForm();
+    this.supplierStep.set('identity');
+    this.supplierDialogOpen.set(true);
+  }
+
+  protected closeDialog(): void {
+    this.supplierDialogOpen.set(false);
+    this.supplierStep.set('identity');
+    this.resetForm();
+  }
+
+  protected setSupplierStep(step: 'identity' | 'contact'): void {
+    this.supplierStep.set(step);
+  }
+
+  protected nextSupplierStep(): void {
+    this.supplierStep.set('contact');
+  }
+
+  protected previousSupplierStep(): void {
+    this.supplierStep.set('identity');
+  }
+
   protected async submit(): Promise<void> {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -331,6 +452,7 @@ export class SuppliersPageComponent {
         await this.api.create(payload);
       }
 
+      this.supplierDialogOpen.set(false);
       this.resetForm();
       await this.loadSuppliers();
     } catch (error) {
