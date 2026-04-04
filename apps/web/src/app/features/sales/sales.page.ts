@@ -5,7 +5,6 @@ import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -44,7 +43,6 @@ import {
     MatChipsModule,
     MatDividerModule,
     MatFormFieldModule,
-    MatIconModule,
     MatInputModule,
     MatListModule,
     MatProgressBarModule,
@@ -308,14 +306,29 @@ import {
                     </div>
 
                     <div class="draft-item__actions">
-                      <button mat-icon-button type="button" (click)="decreaseQuantity(item)">
-                        <mat-icon>remove</mat-icon>
+                      <button
+                        mat-icon-button
+                        type="button"
+                        aria-label="Reducir cantidad"
+                        (click)="decreaseQuantity(item)"
+                      >
+                        <span aria-hidden="true">-</span>
                       </button>
-                      <button mat-icon-button type="button" (click)="increaseQuantity(item)">
-                        <mat-icon>add</mat-icon>
+                      <button
+                        mat-icon-button
+                        type="button"
+                        aria-label="Aumentar cantidad"
+                        (click)="increaseQuantity(item)"
+                      >
+                        <span aria-hidden="true">+</span>
                       </button>
-                      <button mat-icon-button type="button" (click)="removeItem(item)">
-                        <mat-icon>delete</mat-icon>
+                      <button
+                        mat-icon-button
+                        type="button"
+                        aria-label="Eliminar item"
+                        (click)="removeItem(item)"
+                      >
+                        <span aria-hidden="true">&times;</span>
                       </button>
                     </div>
                   </article>

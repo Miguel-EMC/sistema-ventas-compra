@@ -13,7 +13,7 @@ class HealthController
             'version' => 'v1',
             'status' => 'ok',
             'timestamp' => now()->toIso8601String(),
-            'frontend_url' => env('FRONTEND_URL'),
+            'frontend_url' => config('app.frontend_url'),
             'database_connection' => config('database.default'),
         ]);
     }

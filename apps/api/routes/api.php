@@ -3,7 +3,6 @@
 use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\AuthenticatedUserController;
-use App\Http\Controllers\Api\V1\Auth\LegacyBridgeLoginController;
 use App\Http\Controllers\Api\V1\AssetCategoryController;
 use App\Http\Controllers\Api\V1\AssetController;
 use App\Http\Controllers\Api\V1\BusinessSettingsController;
@@ -51,7 +50,6 @@ Route::prefix('v1')->group(function (): void {
 
     Route::prefix('auth')->group(function (): void {
         Route::post('/login', LoginController::class)->name('api.v1.auth.login');
-        Route::post('/legacy-bridge', LegacyBridgeLoginController::class)->name('api.v1.auth.legacy-bridge');
         Route::get('/me', AuthenticatedUserController::class)
             ->middleware('auth:sanctum')
             ->name('api.v1.auth.me');

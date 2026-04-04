@@ -1,9 +1,4 @@
 import { Component, inject, signal } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { resolveApiError } from '../../core/http/resolve-api-error';
@@ -12,27 +7,32 @@ import { DashboardLowStockProduct, DashboardSummary } from './dashboard.types';
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [
-    MatButtonModule,
-    MatCardModule,
-    MatChipsModule,
-    MatDividerModule,
-    MatListModule,
-    MatProgressBarModule,
-    RouterLink,
-  ],
+  imports: [MatProgressBarModule, RouterLink],
   template: `
     <section class="stack dashboard-page">
-      <header class="page-header">
-        <div class="page-header__copy">
+      <header class="surface dashboard-hero">
+        <div class="dashboard-hero__copy">
           <span class="page-kicker">Dashboard</span>
-          <h1 class="page-title">Operacion diaria y salud comercial en tiempo real.</h1>
+          <h1 class="page-title">Resumen operativo del dia</h1>
           <p class="page-description">
-            Este tablero ya sale de ventas, caja, clientes y stock sobre la API nueva, sin depender
-            de calculos del legacy.
+            Una vista sobria para seguir ventas, caja, clientes y stock sin ruido visual.
           </p>
         </div>
-        <span class="pill">Angular Material + insights reales</span>
+
+        @if (dashboard(); as dashboard) {
+          <div class="dashboard-hero__side">
+            <div class="dashboard-balance">
+              <small>Ventas de hoy</small>
+              <strong>{{ formatCurrency(dashboard.summary.sales_today_total) }}</strong>
+              <span>{{ dashboard.summary.sales_today_count }} transaccion(es) registradas.</span>
+            </div>
+            <div class="dashboard-balance dashboard-balance--muted">
+              <small>Cajas abiertas</small>
+              <strong>{{ dashboard.summary.open_cash_sessions }}</strong>
+              <span>Sesiones activas en operacion.</span>
+            </div>
+          </div>
+        }
       </header>
 
       @if (loading()) {
@@ -40,160 +40,159 @@ import { DashboardLowStockProduct, DashboardSummary } from './dashboard.types';
       }
 
       @if (error()) {
-        <article class="surface surface--muted stack">
-          <span class="page-kicker">Operacion</span>
+        <article class="surface surface--muted stack dashboard-message">
+          <span class="page-kicker">Estado</span>
           <strong>{{ error() }}</strong>
         </article>
       }
 
       @if (legacyNotice()) {
-        <article class="surface surface--muted stack">
+        <article class="surface surface--muted stack dashboard-message">
           <span class="page-kicker">Migracion</span>
           <strong>{{ legacyNotice() }}</strong>
         </article>
       }
 
       @if (dashboard(); as dashboard) {
-        <section class="grid grid--cards">
-          <article class="surface metric-card">
-            <span class="metric-card__label">Ventas de hoy</span>
-            <strong class="metric-card__value">
-              {{ formatCurrency(dashboard.summary.sales_today_total) }}
-            </strong>
-            <span class="metric-card__hint">
-              {{ dashboard.summary.sales_today_count }} ticket(s) cerrados hoy.
+        <section class="dashboard-metrics">
+          <article class="surface dashboard-metric">
+            <span class="dashboard-metric__label">Ventas del dia</span>
+            <strong class="dashboard-metric__value">{{
+              formatCurrency(dashboard.summary.sales_today_total)
+            }}</strong>
+            <span class="dashboard-metric__hint">
+              {{ dashboard.summary.sales_today_count }} venta(s)
             </span>
           </article>
 
-          <article class="surface metric-card">
-            <span class="metric-card__label">Ventas del mes</span>
-            <strong class="metric-card__value">
-              {{ formatCurrency(dashboard.summary.sales_month_total) }}
-            </strong>
-            <span class="metric-card__hint">
-              {{ dashboard.summary.sales_month_count }} venta(s) registradas este mes.
+          <article class="surface dashboard-metric">
+            <span class="dashboard-metric__label">Ventas del mes</span>
+            <strong class="dashboard-metric__value">{{
+              formatCurrency(dashboard.summary.sales_month_total)
+            }}</strong>
+            <span class="dashboard-metric__hint">
+              {{ dashboard.summary.sales_month_count }} venta(s)
             </span>
           </article>
 
-          <article class="surface metric-card">
-            <span class="metric-card__label">Clientes activos</span>
-            <strong class="metric-card__value">{{ dashboard.summary.active_customers }}</strong>
-            <span class="metric-card__hint">Base comercial ya disponible para checkout y reportes.</span>
+          <article class="surface dashboard-metric">
+            <span class="dashboard-metric__label">Clientes activos</span>
+            <strong class="dashboard-metric__value">{{ dashboard.summary.active_customers }}</strong>
+            <span class="dashboard-metric__hint">Base comercial operativa</span>
           </article>
 
-          <article class="surface metric-card">
-            <span class="metric-card__label">Cajas abiertas</span>
-            <strong class="metric-card__value">{{ dashboard.summary.open_cash_sessions }}</strong>
-            <span class="metric-card__hint">Sesiones operativas activas en este momento.</span>
+          <article class="surface dashboard-metric">
+            <span class="dashboard-metric__label">Cajas abiertas</span>
+            <strong class="dashboard-metric__value">{{ dashboard.summary.open_cash_sessions }}</strong>
+            <span class="dashboard-metric__hint">Operacion en curso</span>
           </article>
 
-          <article class="surface metric-card">
-            <span class="metric-card__label">Stock critico</span>
-            <strong class="metric-card__value">{{ dashboard.summary.low_stock_products }}</strong>
-            <span class="metric-card__hint">Productos por debajo del minimo configurado.</span>
-          </article>
-
-          <article class="surface metric-card">
-            <span class="metric-card__label">Modulo listo</span>
-            <strong class="metric-card__value">POS + Caja</strong>
-            <span class="metric-card__hint">El flujo nuevo ya soporta apertura, venta y cierre.</span>
+          <article class="surface dashboard-metric">
+            <span class="dashboard-metric__label">Stock critico</span>
+            <strong class="dashboard-metric__value">{{ dashboard.summary.low_stock_products }}</strong>
+            <span class="dashboard-metric__hint">Productos por revisar</span>
           </article>
         </section>
 
         <section class="dashboard-layout">
-          <mat-card appearance="outlined" class="dashboard-card">
-            <mat-card-header>
-              <mat-card-title>Ventas recientes</mat-card-title>
-              <mat-card-subtitle>Ultimos comprobantes confirmados por la API nueva.</mat-card-subtitle>
-            </mat-card-header>
+          <article class="surface dashboard-panel dashboard-panel--wide">
+            <header class="dashboard-panel__header">
+              <div>
+                <span class="page-kicker">Ventas</span>
+                <h2 class="dashboard-panel__title">Ventas recientes</h2>
+              </div>
+              <a class="btn" [routerLink]="['/sales']">Ir al POS</a>
+            </header>
 
-            <mat-card-content>
+            <div class="dashboard-panel__body">
               @if (dashboard.recent_sales.length === 0) {
                 <p class="muted">Todavia no hay ventas cerradas para mostrar.</p>
               } @else {
-                <mat-list>
-                  @for (sale of dashboard.recent_sales; track sale.id; let last = $last) {
-                    <mat-list-item class="dashboard-list-item">
-                      <div class="dashboard-list-item__content">
+                <div class="dashboard-list">
+                  @for (sale of dashboard.recent_sales; track sale.id) {
+                    <article class="dashboard-row">
+                      <div class="dashboard-row__copy">
                         <strong>{{ sale.customer_name || 'Consumidor final' }}</strong>
                         <span>
-                          {{ sale.items_count }} item(s)
-                          · {{ formatPaymentMethods(sale.payment_methods) }}
+                          {{ sale.items_count }} item(s) ·
+                          {{ formatPaymentMethods(sale.payment_methods) }}
                         </span>
                         <small>
-                          {{ sale.register_name || 'Sin caja' }}
-                          · {{ formatDateTime(sale.sold_at) }}
+                          {{ sale.register_name || 'Sin caja' }} · {{ formatDateTime(sale.sold_at) }}
                         </small>
                       </div>
-                      <div class="dashboard-list-item__amount">
+                      <div class="dashboard-row__amount">
                         {{ formatCurrency(sale.grand_total) }}
                       </div>
-                    </mat-list-item>
-                    @if (!last) {
-                      <mat-divider></mat-divider>
-                    }
+                    </article>
                   }
-                </mat-list>
+                </div>
               }
-            </mat-card-content>
-          </mat-card>
+            </div>
+          </article>
 
-          <mat-card appearance="outlined" class="dashboard-card">
-            <mat-card-header>
-              <mat-card-title>Alertas de stock</mat-card-title>
-              <mat-card-subtitle>Productos que ya necesitan reposicion o ajuste.</mat-card-subtitle>
-            </mat-card-header>
+          <article class="surface dashboard-panel">
+            <header class="dashboard-panel__header">
+              <div>
+                <span class="page-kicker">Inventario</span>
+                <h2 class="dashboard-panel__title">Stock critico</h2>
+              </div>
+              <a class="btn" [routerLink]="['/products']">Ver productos</a>
+            </header>
 
-            <mat-card-content>
+            <div class="dashboard-panel__body">
               @if (dashboard.low_stock_products.length === 0) {
                 <p class="muted">No hay productos en estado critico.</p>
               } @else {
-                <div class="dashboard-stock-list">
+                <div class="dashboard-list dashboard-list--compact">
                   @for (product of dashboard.low_stock_products; track product.id) {
-                    <article class="dashboard-stock-item">
-                      <div class="dashboard-stock-item__copy">
+                    <article class="dashboard-row dashboard-row--stacked">
+                      <div class="dashboard-row__copy">
                         <strong>{{ product.name }}</strong>
                         <small>
                           Faltan {{ formatNumber(stockGap(product)) }} {{ product.unit }} para volver
                           al minimo.
                         </small>
                       </div>
-                      <mat-chip-set>
-                        <mat-chip>Actual {{ formatNumber(product.current_stock) }}</mat-chip>
-                        <mat-chip highlighted>Minimo {{ formatNumber(product.minimum_stock) }}</mat-chip>
-                      </mat-chip-set>
+                      <div class="dashboard-tags">
+                        <span class="dashboard-tag">Actual {{ formatNumber(product.current_stock) }}</span>
+                        <span class="dashboard-tag dashboard-tag--accent">
+                          Minimo {{ formatNumber(product.minimum_stock) }}
+                        </span>
+                      </div>
                     </article>
                   }
                 </div>
               }
-            </mat-card-content>
-          </mat-card>
+            </div>
+          </article>
 
-          <mat-card appearance="outlined" class="dashboard-card dashboard-card--accent">
-            <mat-card-header>
-              <mat-card-title>Acciones rapidas</mat-card-title>
-              <mat-card-subtitle>Ruta corta para seguir migrando la operacion diaria.</mat-card-subtitle>
-            </mat-card-header>
+          <article class="surface dashboard-panel dashboard-panel--soft">
+            <header class="dashboard-panel__header">
+              <div>
+                <span class="page-kicker">Accesos</span>
+                <h2 class="dashboard-panel__title">Acciones rapidas</h2>
+              </div>
+            </header>
 
-            <mat-card-content class="stack">
-              <mat-chip-set>
-                <mat-chip>Hoy {{ dashboard.summary.sales_today_count }} venta(s)</mat-chip>
-                <mat-chip>Mes {{ dashboard.summary.sales_month_count }} ticket(s)</mat-chip>
-                <mat-chip>Cajas {{ dashboard.summary.open_cash_sessions }}</mat-chip>
-              </mat-chip-set>
+            <div class="dashboard-panel__body stack">
+              <div class="dashboard-tags">
+                <span class="dashboard-tag">Hoy {{ dashboard.summary.sales_today_count }} venta(s)</span>
+                <span class="dashboard-tag">Mes {{ dashboard.summary.sales_month_count }} venta(s)</span>
+                <span class="dashboard-tag">Cajas {{ dashboard.summary.open_cash_sessions }}</span>
+              </div>
 
               <p class="muted">
-                La nueva base ya puede operar el ciclo diario completo. Desde aqui conviene seguir
-                con ventas, revisar caja o entrar a reportes para auditar resultados.
+                Accesos directos para continuar con la operacion sin salir del panel principal.
               </p>
 
               <div class="cta-row">
-                <a mat-flat-button color="primary" [routerLink]="['/sales']">Ir al POS</a>
-                <a mat-stroked-button [routerLink]="['/cash']">Revisar caja</a>
-                <a mat-stroked-button [routerLink]="['/reports']">Ver reportes</a>
+                <a class="btn btn--primary" [routerLink]="['/sales']">Ventas</a>
+                <a class="btn" [routerLink]="['/cash']">Caja</a>
+                <a class="btn" [routerLink]="['/reports']">Reportes</a>
               </div>
-            </mat-card-content>
-          </mat-card>
+            </div>
+          </article>
         </section>
       }
     </section>
@@ -203,86 +202,253 @@ import { DashboardLowStockProduct, DashboardSummary } from './dashboard.types';
       align-content: start;
     }
 
+    .dashboard-hero {
+      display: grid;
+      gap: 1.5rem;
+      grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.9fr);
+      align-items: stretch;
+      padding: 1.6rem;
+    }
+
+    .dashboard-hero__copy {
+      display: grid;
+      gap: 0.65rem;
+      align-content: start;
+    }
+
+    .dashboard-hero__side {
+      display: grid;
+      gap: 0.9rem;
+      align-content: start;
+    }
+
+    .dashboard-balance {
+      display: grid;
+      gap: 0.28rem;
+      border: 1px solid rgba(22, 138, 87, 0.08);
+      border-radius: 1.4rem;
+      background: rgba(22, 138, 87, 0.04);
+      padding: 1rem 1.05rem;
+    }
+
+    .dashboard-balance--muted {
+      border-color: var(--border);
+      background: var(--surface-muted);
+    }
+
+    .dashboard-balance small {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dashboard-balance strong {
+      color: var(--text-soft);
+      font-size: 1.45rem;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+    }
+
+    .dashboard-balance span {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .dashboard-message {
+      padding: 1.1rem 1.2rem;
+    }
+
+    .dashboard-metrics {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .dashboard-metric {
+      display: grid;
+      gap: 0.45rem;
+      min-height: 9.5rem;
+      padding: 1.2rem;
+    }
+
+    .dashboard-metric__label {
+      color: var(--text-muted);
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dashboard-metric__value {
+      color: var(--text-soft);
+      font-size: clamp(1.45rem, 2vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+    }
+
+    .dashboard-metric__hint {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
     .dashboard-layout {
       display: grid;
       gap: 1rem;
-      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(18rem, 0.9fr);
+      grid-template-columns: minmax(0, 1.2fr) minmax(20rem, 0.9fr);
     }
 
-    .dashboard-card {
-      border-radius: 1.5rem;
-      height: 100%;
-    }
-
-    .dashboard-card mat-card-content:first-of-type {
-      margin-top: 1rem;
-    }
-
-    .dashboard-card--accent {
-      background:
-        linear-gradient(180deg, rgba(15, 76, 129, 0.08), rgba(255, 255, 255, 0.98)),
-        var(--surface);
-    }
-
-    .dashboard-list-item {
-      height: auto;
-      align-items: start;
-      padding-block: 0.55rem;
-    }
-
-    .dashboard-list-item__content {
+    .dashboard-panel {
       display: grid;
-      gap: 0.2rem;
-      min-width: 0;
-      padding-right: 1rem;
+      gap: 1rem;
+      align-content: start;
+      min-height: 100%;
+      padding: 1.25rem;
     }
 
-    .dashboard-list-item__content span,
-    .dashboard-list-item__content small {
-      color: var(--text-muted);
+    .dashboard-panel--wide {
+      grid-row: span 2;
     }
 
-    .dashboard-list-item__amount {
-      font-weight: 700;
-      white-space: nowrap;
+    .dashboard-panel--soft {
+      background: linear-gradient(180deg, rgba(22, 138, 87, 0.04), rgba(255, 255, 255, 0.96));
     }
 
-    .dashboard-stock-list {
+    .dashboard-panel__header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .dashboard-panel__title {
+      margin: 0.2rem 0 0;
+      color: var(--text-soft);
+      font-size: 1.1rem;
+      line-height: 1.2;
+    }
+
+    .dashboard-panel__body {
+      display: grid;
+      gap: 0.9rem;
+    }
+
+    .dashboard-list {
       display: grid;
       gap: 0.85rem;
     }
 
-    .dashboard-stock-item {
-      display: grid;
+    .dashboard-list--compact {
       gap: 0.75rem;
-      border: 1px solid var(--border);
-      border-radius: 1rem;
-      background: rgba(15, 76, 129, 0.03);
-      padding: 1rem;
     }
 
-    .dashboard-stock-item__copy {
+    .dashboard-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0.9rem;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: 1.2rem;
+      background: var(--surface-muted);
+      padding: 0.95rem 1rem;
+    }
+
+    .dashboard-row--stacked {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+
+    .dashboard-row__copy {
       display: grid;
       gap: 0.2rem;
+      min-width: 0;
     }
 
-    .dashboard-stock-item__copy small {
+    .dashboard-row__copy strong {
+      color: var(--text-soft);
+      font-size: 0.98rem;
+    }
+
+    .dashboard-row__copy span,
+    .dashboard-row__copy small {
       color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .dashboard-row__amount {
+      color: var(--text-soft);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .dashboard-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+    }
+
+    .dashboard-tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.74);
+      color: var(--text-soft);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0 0.78rem;
+    }
+
+    .dashboard-tag--accent {
+      border-color: rgba(22, 138, 87, 0.14);
+      background: rgba(22, 138, 87, 0.08);
+      color: var(--primary-strong);
     }
 
     @media (max-width: 1200px) {
+      .dashboard-hero,
       .dashboard-layout {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 1fr;
       }
 
-      .dashboard-card--accent {
-        grid-column: 1 / -1;
+      .dashboard-metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .dashboard-panel--wide {
+        grid-row: auto;
       }
     }
 
     @media (max-width: 860px) {
       .dashboard-layout {
         grid-template-columns: 1fr;
+      }
+
+      .dashboard-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .dashboard-row {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .dashboard-metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .dashboard-hero,
+      .dashboard-panel,
+      .dashboard-metric {
+        padding-left: 1rem;
+        padding-right: 1rem;
       }
     }
   `,

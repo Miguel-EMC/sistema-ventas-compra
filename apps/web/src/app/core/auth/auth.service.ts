@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL, LEGACY_APP_URL } from '../config/api.config';
+import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from '../config/api.config';
 import { AuthUser, LoginResponse, MeResponse } from './auth.types';
 
 @Injectable({ providedIn: 'root' })
@@ -63,26 +63,8 @@ export class AuthService {
     return response.data.user;
   }
 
-  async loginWithLegacyBridge(token: string): Promise<AuthUser> {
-    this.status.set('loading');
-
-    const response = await firstValueFrom(
-      this.http.post<LoginResponse>(`${API_BASE_URL}/auth/legacy-bridge`, {
-        token,
-        device_name: 'ventaspos-web-legacy-bridge',
-      }),
-    );
-
-    this.setToken(response.meta.token);
-    this.user.set(response.data.user);
-    this.status.set('authenticated');
-    this.booted.set(true);
-
-    return response.data.user;
-  }
-
-  async logout(options: { redirectTo?: string | null; terminateLegacy?: boolean } = {}): Promise<void> {
-    const { redirectTo = '/login', terminateLegacy = false } = options;
+  async logout(options: { redirectTo?: string | null } = {}): Promise<void> {
+    const { redirectTo = '/login' } = options;
 
     try {
       if (this.getToken()) {
@@ -93,13 +75,6 @@ export class AuthService {
     }
 
     this.clearSession();
-
-    if (terminateLegacy && typeof window !== 'undefined') {
-      const params = new URLSearchParams();
-      params.set('redirect', redirectTo || '/login?legacy=signed-out&logout=1');
-      window.location.assign(`${LEGACY_APP_URL}/Controller/Logout.php?${params.toString()}`);
-      return;
-    }
 
     if (redirectTo) {
       await this.router.navigateByUrl(redirectTo);

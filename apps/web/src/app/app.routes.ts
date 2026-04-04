@@ -5,17 +5,16 @@ import { guestGuard } from './core/auth/guest.guard';
 
 export const routes: Routes = [
   {
+    path: 'help',
+    loadComponent: () => import('./features/help/help.page').then((m) => m.HelpPageComponent),
+    title: 'Ayuda | VentasPOS',
+  },
+  {
     path: 'login',
     loadComponent: () =>
       import('./features/auth/login.page').then((m) => m.LoginPageComponent),
     title: 'Acceso | VentasPOS',
     canActivate: [guestGuard],
-  },
-  {
-    path: 'auth/bridge',
-    loadComponent: () =>
-      import('./features/auth/legacy-bridge.page').then((m) => m.LegacyBridgePageComponent),
-    title: 'Migrando sesion | VentasPOS',
   },
   {
     path: '',

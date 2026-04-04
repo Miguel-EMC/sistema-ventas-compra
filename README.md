@@ -1,128 +1,71 @@
 # ventaspos
 
-Primera fase de modernizacion gradual para PHP 8.5.
+Monorepo con:
 
-## Que cambia en esta fase
+- `apps/api`: Laravel 13
+- `apps/web`: Angular 21
+- `docs`: documentacion funcional y tecnica
 
-- Configuracion centralizada con `.env`
-- Bootstrap moderno en `bootstrap/app.php`
-- Autoload Composer y herramientas de calidad
-- Login por `POST` con sesion y CSRF
-- Compatibilidad temporal para controladores/vistas legacy
-- Capa PDO nueva para auth, menu, settings, uploads y repositorios base
-- Shim `mysqli` para que el codigo legacy siga funcionando sin la extension `mysqli`
-- `public/assets` reducido a assets puente minimos (`app.css`, `app.js`, logos y uploads`)
-- Core UI propio en SCSS con compilacion a `public/assets/css/app.css`
-- Layout global sin Bootstrap y con JS propio para sidebar, dropdowns, modales y tabs
+La raiz ya no contiene runtime de PHP legacy ni builds del frontend antiguo. La ejecucion se hace con Docker.
 
-## Arranque local
+## Estructura
 
-1. Instala dependencias:
-
-   ```bash
-   composer install
-   npm install
-   ```
-
-2. Revisa `.env` y ajusta `APP_URL`, `APP_ASSET_URL` y credenciales de base.
-
-3. Compila el CSS del template:
-
-   ```bash
-   npm run build:css
-   ```
-
-4. Asegura que Apache apunte al proyecto o a `public/` segun tu despliegue.
-
-5. Si tu base todavia no tiene `password_hash`, aplica las migraciones SQL de `database/migrations/`.
-
-## Migraciones recomendadas
-
-- `database/migrations/20260327_000001_add_password_hash_to_usuarios.sql`
-- `database/migrations/20260327_000002_modernize_legacy_schema.sql`
-
-Haz backup antes de aplicarlas.
-
-## Validaciones usadas
-
-```bash
-vendor/bin/phpunit --testdox
-vendor/bin/phpstan analyse --memory-limit=1G
-vendor/bin/php-cs-fixer fix
-vendor/bin/rector process --dry-run
+```text
+ventaspos/
+  apps/
+    api/
+      .env
+      .env.example
+    web/
+      .env
+      .env.example
+  docs/
+  docker-compose.yml
 ```
 
-## Estado actual
+## Ejecutar con Docker
 
-- La autenticacion nueva ya usa hash y migra usuarios legacy al iniciar sesion.
-- El shell legacy ya quedo reducido a un puente delgado de autenticacion y redirecciones hacia Angular.
-- La logica vieja basada en `Model/Conexion.php` ya fue retirada del runtime principal.
-- La UI nueva vive en `resources/scss/` y cualquier cambio visual global debe salir de ahi.
-- `public/assets` ya no carga vendors legacy: solo conserva el core minimo y `fotoproducto/`.
+1. Revisa los `.env` por app:
 
-## Base nueva de migracion
+   - `apps/api/.env`
+   - `apps/web/.env`
 
-Tambien ya existe una base paralela para la migracion a stack moderno:
+2. Levanta el stack:
 
-- API Laravel 13: `apps/api`
-- Frontend Angular 21: `apps/web`
-- Plan general: `docs/laravel-angular-postgresql-migration-plan.md`
-- Mapa de dominio: `docs/domain-map.md`
-- Propuesta de esquema PostgreSQL: `docs/postgresql-schema-proposal.md`
-- Roadmap API-first: `docs/api-first-roadmap.md`
+   ```bash
+   sh scripts/start.sh
+   ```
 
-### Comandos utiles
+   Si lo quieres en segundo plano:
 
-```bash
-npm run start:web
-npm run build:web
-composer --working-dir=apps/api run-script dev
-composer --working-dir=apps/api install
-composer --working-dir=apps/api run-script test
-```
+   ```bash
+   sh scripts/start.sh --detach
+   ```
 
-### Nota sobre PostgreSQL
+3. URLs:
 
-La base nueva esta pensada para PostgreSQL 18, pero tu PHP local todavia necesita habilitar `pdo_pgsql` y `pgsql` para conectar Laravel directamente a Postgres.
+   - Web: `http://localhost:8080`
+   - API: `http://localhost:8001`
+   - PostgreSQL: disponible solo dentro de la red de Docker para `api`
 
-### Credenciales base de la API nueva
+## Variables por app
 
-- usuario: `admin`
-- password: `password`
+### `apps/api/.env`
 
-### Modulos ya migrados en la base nueva
+- configuracion Laravel
+- credenciales PostgreSQL
+- dominios stateful de Sanctum
 
-- `Auth + Users + Roles`
-  - login con token
-  - `me`
-  - logout
-  - CRUD de usuarios
-  - listado de roles
-- `Catalog`
-  - CRUD de categorias de producto
-  - CRUD de productos
-  - ajuste manual de stock con movimientos
-- `Assets`
-  - CRUD de categorias de activo
-  - CRUD de activos internos
-- `Customers`
-  - CRUD de clientes
-  - consulta para perfiles autenticados
-- `Suppliers`
-  - CRUD de proveedores
-  - consulta para perfiles autenticados
+### `apps/web/.env`
 
-### Frontend Angular ya conectado a la API nueva
+- `API_ORIGIN`
+- variables runtime del frontend servidas desde `env.js`
 
-- `Login`
-- `Dashboard`
-- `Usuarios`
-- `Productos`
-- `Activos`
-- `Clientes`
-- `Proveedores`
+## Notas
 
-## Siguiente bloque recomendado
-
-- `Ventas POS + borradores + checkout`
-- luego `Caja + reportes`
+- La API arranca en Docker sobre PostgreSQL.
+- El frontend se compila en Docker y lee su config runtime desde `apps/web/.env`.
+- La documentacion de migracion sigue en `docs/`.
+- Usuario admin sembrado al arrancar:
+  - usuario: `admin`
+  - clave: `password`

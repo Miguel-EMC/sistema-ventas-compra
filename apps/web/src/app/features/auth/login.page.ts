@@ -1,86 +1,126 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, RouterLink],
   template: `
-    <div class="auth-shell">
-      <section class="auth-panel">
-        <div class="stack">
-          <span class="page-kicker">Nueva plataforma</span>
-          <h1 class="page-title">Acceso real al backend migrado.</h1>
-          <p class="page-description">
-            Este login ya habla con Laravel 13 por medio de Sanctum y deja lista la base para el
-            resto de modulos.
-          </p>
-        </div>
+    <div
+      class="min-h-screen bg-white px-6 py-10 text-slate-900 sm:px-8 lg:px-10"
+    >
+      <div class="mx-auto flex min-h-[calc(100vh-5rem)] max-w-7xl items-center justify-center">
+        <div class="w-full max-w-md">
+          <div class="rounded-[2rem] border border-slate-200 bg-white p-2 shadow-[0_30px_80px_rgba(15,23,42,0.10)]">
+            <article class="rounded-[1.6rem] bg-white px-7 py-8 sm:px-8 sm:py-9">
+              <div class="mb-8 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-sm font-semibold tracking-[0.22em] text-emerald-700"
+                  >
+                    VP
+                  </div>
 
-        <ul class="bullet-list">
-          <li>
-            <strong>Usuario base</strong>
-            admin
-          </li>
-          <li>
-            <strong>Password base</strong>
-            password
-          </li>
-          <li>
-            <strong>Rol inicial</strong>
-            Administrador
-          </li>
-        </ul>
-      </section>
+                  <div>
+                    <p class="text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-emerald-700/80">
+                      VentasPOS
+                    </p>
+                    <h1 class="text-lg font-semibold tracking-tight text-slate-900">Iniciar sesion</h1>
+                  </div>
+                </div>
 
-      <section class="surface auth-card">
-        <div class="page-header">
-          <div class="page-header__copy">
-            <span class="page-kicker">Auth + Users</span>
-            <h2 class="page-title">Entrar al panel nuevo</h2>
-            <p class="page-description">
-              Usa el usuario administrador sembrado por la API para validar el primer modulo real.
-            </p>
-          </div>
-        </div>
+                <span
+                  class="inline-flex items-center rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[0.7rem] font-medium text-emerald-700"
+                >
+                  Seguro
+                </span>
+              </div>
 
-        @if (legacyNotice()) {
-          <p class="alert alert--info">{{ legacyNotice() }}</p>
-        }
+              <div class="mb-8 space-y-2">
+                <p class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-[2rem]">
+                  Acceso al sistema
+                </p>
+                <p class="text-sm leading-6 text-slate-500">
+                  Ingresa tus credenciales para continuar.
+                </p>
+              </div>
 
-        <form class="form-grid" [formGroup]="form" (ngSubmit)="submit()">
-          <div class="field">
-            <label for="login-user">Correo o usuario</label>
-            <input id="login-user" type="text" formControlName="login" placeholder="admin" />
-          </div>
-
-          <div class="field">
-            <label for="login-password">Password</label>
-            <input
-              id="login-password"
-              type="password"
-              formControlName="password"
-              placeholder="password"
-            />
-          </div>
-
-          @if (error()) {
-            <p class="alert alert--danger">{{ error() }}</p>
-          }
-
-          <div class="cta-row">
-            <button class="btn btn--primary" type="submit" [disabled]="loading()">
-              @if (loading()) {
-                Entrando...
-              } @else {
-                Iniciar sesion
+              @if (legacyNotice()) {
+                <p
+                  class="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-800"
+                >
+                  {{ legacyNotice() }}
+                </p>
               }
-            </button>
+
+              <form class="space-y-5" [formGroup]="form" (ngSubmit)="submit()">
+                <label class="group relative block">
+                  <input
+                    id="login-user"
+                    type="text"
+                    formControlName="login"
+                    placeholder=" "
+                    autocomplete="username"
+                    class="peer h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 pt-5 text-base text-slate-900 outline-none transition placeholder:text-transparent hover:border-slate-300 focus:border-emerald-500 focus:shadow-[0_0_0_4px_rgba(16,185,129,0.08)]"
+                  />
+                  <span
+                    class="pointer-events-none absolute left-4 top-4 origin-left text-sm text-slate-400 transition-all duration-200 peer-placeholder-shown:top-[1.15rem] peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-focus:top-2.5 peer-focus:scale-90 peer-focus:text-xs peer-focus:font-medium peer-focus:text-emerald-700 peer-not-placeholder-shown:top-2.5 peer-not-placeholder-shown:scale-90 peer-not-placeholder-shown:text-xs peer-not-placeholder-shown:font-medium peer-not-placeholder-shown:text-slate-500"
+                  >
+                    Usuario o correo
+                  </span>
+                </label>
+
+                <label class="group relative block">
+                  <input
+                    id="login-password"
+                    type="password"
+                    formControlName="password"
+                    placeholder=" "
+                    autocomplete="current-password"
+                    class="peer h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 pt-5 text-base text-slate-900 outline-none transition placeholder:text-transparent hover:border-slate-300 focus:border-emerald-500 focus:shadow-[0_0_0_4px_rgba(16,185,129,0.08)]"
+                  />
+                  <span
+                    class="pointer-events-none absolute left-4 top-4 origin-left text-sm text-slate-400 transition-all duration-200 peer-placeholder-shown:top-[1.15rem] peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-focus:top-2.5 peer-focus:scale-90 peer-focus:text-xs peer-focus:font-medium peer-focus:text-emerald-700 peer-not-placeholder-shown:top-2.5 peer-not-placeholder-shown:scale-90 peer-not-placeholder-shown:text-xs peer-not-placeholder-shown:font-medium peer-not-placeholder-shown:text-slate-500"
+                  >
+                    Contrasena
+                  </span>
+                </label>
+
+                @if (error()) {
+                  <p
+                    class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700"
+                  >
+                    {{ error() }}
+                  </p>
+                }
+
+                <button
+                  class="inline-flex h-14 w-full items-center justify-center rounded-2xl bg-emerald-600 text-sm font-semibold text-white shadow-[0_22px_40px_rgba(16,185,129,0.18)] transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  type="submit"
+                  [disabled]="loading()"
+                >
+                  @if (loading()) {
+                    Entrando...
+                  } @else {
+                    Ingresar
+                  }
+                </button>
+              </form>
+
+              <div class="mt-8 flex items-center justify-between gap-4">
+                <a
+                  routerLink="/help"
+                  class="inline-flex items-center rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                >
+                  ¿Necesitas ayuda?
+                </a>
+              </div>
+            </article>
           </div>
-        </form>
-      </section>
+        </div>
+      </div>
     </div>
   `,
 })
@@ -162,6 +202,8 @@ export class LoginPageComponent {
         return 'El formulario legacy no envio usuario y password completos. Continua desde este acceso nuevo.';
       case 'auth-invalid':
         return 'Las credenciales del acceso legacy no fueron validas. Intenta nuevamente desde este login.';
+      case 'auth-legacy-retired':
+        return 'El login heredado ya no transfiere sesiones al panel nuevo. Ingresa directamente desde este acceso Angular.';
       case 'auth-expired':
         return 'La sesion anterior expiro o el token CSRF legacy ya no era valido. Inicia sesion otra vez desde aqui.';
       case 'signed-out':

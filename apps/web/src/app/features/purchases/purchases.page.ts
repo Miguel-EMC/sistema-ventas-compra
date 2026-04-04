@@ -5,7 +5,6 @@ import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
@@ -39,7 +38,6 @@ import {
     MatChipsModule,
     MatDividerModule,
     MatFormFieldModule,
-    MatIconModule,
     MatInputModule,
     MatProgressBarModule,
     MatSelectModule,
@@ -812,10 +810,11 @@ import {
                         <button
                           mat-icon-button
                           type="button"
+                          aria-label="Eliminar linea"
                           (click)="removeItemRow(index)"
                           [disabled]="itemControls().length === 1"
                         >
-                          <mat-icon>delete</mat-icon>
+                          <span aria-hidden="true">&times;</span>
                         </button>
                       </div>
 
