@@ -89,7 +89,7 @@ class CashSessionService
             ]);
         }
 
-        if ($session->opened_by_id !== $user->id && $user->role?->slug !== 'admin') {
+        if ($session->opened_by_id !== $user->id && ! in_array($user->role?->slug, ['admin', 'superadmin'], true)) {
             throw ValidationException::withMessages([
                 'session' => 'No puedes cerrar una caja abierta por otro usuario.',
             ]);

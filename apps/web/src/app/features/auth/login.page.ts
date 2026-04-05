@@ -155,7 +155,7 @@ export class LoginPageComponent {
     try {
       await this.auth.login(this.form.getRawValue());
 
-      const redirect = this.route.snapshot.queryParamMap.get('redirect') || '/dashboard';
+      const redirect = this.route.snapshot.queryParamMap.get('redirect') || this.defaultRedirect();
       await this.router.navigateByUrl(redirect);
     } catch (error) {
       this.error.set(this.resolveError(error));
@@ -187,9 +187,13 @@ export class LoginPageComponent {
     await this.auth.boot();
 
     if (this.auth.isAuthenticated()) {
-      const redirect = this.route.snapshot.queryParamMap.get('redirect') || '/dashboard';
+      const redirect = this.route.snapshot.queryParamMap.get('redirect') || this.defaultRedirect();
       await this.router.navigateByUrl(redirect);
     }
+  }
+
+  private defaultRedirect(): string {
+    return this.auth.isSuperadmin() ? '/companies' : '/dashboard';
   }
 
   private resolveLegacyNotice(value: string | null): string | null {

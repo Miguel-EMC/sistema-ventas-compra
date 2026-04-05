@@ -33,6 +33,30 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('data.username', 'admin');
     }
 
+    public function test_superadmin_can_log_in_with_username_and_fetch_me(): void
+    {
+        $this->seed(CoreReferenceSeeder::class);
+
+        $loginResponse = $this->postJson('/api/v1/auth/login', [
+            'login' => 'superadmin',
+            'password' => 'password',
+            'device_name' => 'phpunit',
+        ]);
+
+        $loginResponse
+            ->assertOk()
+            ->assertJsonPath('data.user.username', 'superadmin')
+            ->assertJsonPath('data.user.role.slug', 'superadmin');
+
+        $token = $loginResponse->json('meta.token');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/v1/auth/me')
+            ->assertOk()
+            ->assertJsonPath('data.username', 'superadmin')
+            ->assertJsonPath('data.role.slug', 'superadmin');
+    }
+
     public function test_login_rejects_invalid_credentials(): void
     {
         $this->seed(CoreReferenceSeeder::class);

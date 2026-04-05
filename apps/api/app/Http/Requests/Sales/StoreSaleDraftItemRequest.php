@@ -2,11 +2,13 @@
 
 namespace App\Http\Requests\Sales;
 
+use App\Http\Requests\Concerns\InteractsWithCompanyValidation;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreSaleDraftItemRequest extends FormRequest
 {
+    use InteractsWithCompanyValidation;
+
     public function authorize(): bool
     {
         return true;
@@ -18,7 +20,7 @@ class StoreSaleDraftItemRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_id' => ['required', 'integer', Rule::exists('products', 'id')],
+            'product_id' => ['required', 'integer', $this->existsForCurrentCompany('products')],
             'quantity' => ['required', 'numeric', 'gt:0'],
         ];
     }

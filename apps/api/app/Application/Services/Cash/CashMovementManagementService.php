@@ -144,7 +144,7 @@ class CashMovementManagementService
 
     private function isAdmin(User $user): bool
     {
-        return $user->role?->slug === 'admin';
+        return in_array($user->role?->slug, ['admin', 'superadmin'], true);
     }
 
     private function normalizeCategory(mixed $value): string

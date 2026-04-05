@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\CashSessionController;
 use App\Http\Controllers\Api\V1\CancelPurchaseOrderController;
 use App\Http\Controllers\Api\V1\CancelSaleController;
 use App\Http\Controllers\Api\V1\CloseCashSessionController;
+use App\Http\Controllers\Api\V1\CompanyController;
 use App\Http\Controllers\Api\V1\CurrentSaleDraftController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\DashboardSummaryController;
@@ -58,9 +59,14 @@ Route::prefix('v1')->group(function (): void {
             ->name('api.v1.auth.logout');
     });
 
-    Route::middleware(['auth:sanctum', 'role.admin'])->group(function (): void {
+    Route::middleware(['auth:sanctum', 'role:admin,superadmin'])->group(function (): void {
         Route::get('/roles', RoleController::class)->name('api.v1.roles.index');
         Route::apiResource('users', UserController::class);
+    });
+
+    Route::middleware(['auth:sanctum', 'role:superadmin'])->group(function (): void {
+        Route::get('/companies', [CompanyController::class, 'index'])->name('api.v1.companies.index');
+        Route::post('/companies', [CompanyController::class, 'store'])->name('api.v1.companies.store');
     });
 
     Route::middleware('auth:sanctum')->group(function (): void {
@@ -121,7 +127,7 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('suppliers', SupplierController::class)->only(['index', 'show']);
     });
 
-    Route::middleware(['auth:sanctum', 'role.admin'])->group(function (): void {
+    Route::middleware(['auth:sanctum', 'role:admin,superadmin'])->group(function (): void {
         Route::apiResource('product-categories', ProductCategoryController::class)->only(['store', 'update', 'destroy']);
         Route::apiResource('products', ProductController::class)->only(['store', 'update', 'destroy']);
         Route::post('/products/{product}/stock-adjustments', ProductStockAdjustmentController::class)

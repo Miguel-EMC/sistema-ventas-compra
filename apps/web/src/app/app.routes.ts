@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 import { adminGuard } from './core/auth/admin.guard';
 import { authGuard } from './core/auth/auth.guard';
 import { guestGuard } from './core/auth/guest.guard';
+import { homeGuard } from './core/auth/home.guard';
+import { superadminGuard } from './core/auth/superadmin.guard';
 
 export const routes: Routes = [
   {
@@ -25,7 +27,8 @@ export const routes: Routes = [
       {
         path: '',
         pathMatch: 'full',
-        redirectTo: 'dashboard',
+        canActivate: [homeGuard],
+        children: [],
       },
       {
         path: 'dashboard',
@@ -93,6 +96,13 @@ export const routes: Routes = [
           import('./features/users/users.page').then((m) => m.UsersPageComponent),
         title: 'Usuarios | VentasPOS',
         canActivate: [adminGuard],
+      },
+      {
+        path: 'companies',
+        loadComponent: () =>
+          import('./features/companies/companies.component').then((m) => m.CompaniesComponent),
+        title: 'Empresas | VentasPOS',
+        canActivate: [superadminGuard],
       },
     ],
   },

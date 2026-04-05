@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
+    use BelongsToCompany;
     use HasApiTokens;
     use HasFactory;
     use Notifiable;
@@ -22,6 +24,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'public_id',
+        'company_id',
         'name',
         'username',
         'display_name',

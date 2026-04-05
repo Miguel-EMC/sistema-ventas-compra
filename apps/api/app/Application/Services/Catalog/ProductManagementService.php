@@ -3,6 +3,7 @@
 namespace App\Application\Services\Catalog;
 
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -16,11 +17,13 @@ class ProductManagementService
     public function create(array $payload, ?User $actor = null): Product
     {
         return DB::transaction(function () use ($payload, $actor): Product {
+            $categoryId = $this->resolveCategoryId($payload['category_id'] ?? null);
+
             $product = Product::query()->create([
                 'public_id' => (string) Str::uuid(),
                 'sku' => $payload['sku'] ?? null,
                 'barcode' => $payload['barcode'] ?? null,
-                'category_id' => $payload['category_id'] ?? null,
+                'category_id' => $categoryId,
                 'name' => $payload['name'],
                 'description' => $payload['description'] ?? null,
                 'sale_price' => $payload['sale_price'],
@@ -54,10 +57,12 @@ class ProductManagementService
      */
     public function update(Product $product, array $payload): Product
     {
+        $categoryId = $this->resolveCategoryId($payload['category_id'] ?? null);
+
         $product->update([
             'sku' => $payload['sku'] ?? null,
             'barcode' => $payload['barcode'] ?? null,
-            'category_id' => $payload['category_id'] ?? null,
+            'category_id' => $categoryId,
             'name' => $payload['name'],
             'description' => $payload['description'] ?? null,
             'sale_price' => $payload['sale_price'],
@@ -70,6 +75,15 @@ class ProductManagementService
         ]);
 
         return $product->fresh('category');
+    }
+
+    private function resolveCategoryId(mixed $categoryId): ?int
+    {
+        if ($categoryId === null || $categoryId === '') {
+            return null;
+        }
+
+        return ProductCategory::query()->findOrFail((int) $categoryId)->id;
     }
 
     /**

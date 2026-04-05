@@ -2,12 +2,14 @@
 
 namespace App\Http\Requests\Catalog;
 
+use App\Http\Requests\Concerns\InteractsWithCompanyValidation;
 use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateProductRequest extends FormRequest
 {
+    use InteractsWithCompanyValidation;
+
     public function authorize(): bool
     {
         return true;
@@ -24,9 +26,9 @@ class UpdateProductRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:3000'],
-            'sku' => ['nullable', 'string', 'max:80', Rule::unique('products', 'sku')->ignore($product->id)],
-            'barcode' => ['nullable', 'string', 'max:80', Rule::unique('products', 'barcode')->ignore($product->id)],
-            'category_id' => ['nullable', 'integer', Rule::exists('product_categories', 'id')],
+            'sku' => ['nullable', 'string', 'max:80', $this->uniqueForCurrentCompany('products', 'sku', $product->id)],
+            'barcode' => ['nullable', 'string', 'max:80', $this->uniqueForCurrentCompany('products', 'barcode', $product->id)],
+            'category_id' => ['nullable', 'integer', $this->existsForCurrentCompany('product_categories')],
             'sale_price' => ['required', 'numeric', 'min:0'],
             'cost_price' => ['required', 'numeric', 'min:0'],
             'tax_rate' => ['nullable', 'numeric', 'min:0'],

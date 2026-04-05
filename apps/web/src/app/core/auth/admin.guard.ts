@@ -1,12 +1,3 @@
-import { CanActivateFn, Router } from '@angular/router';
-import { inject } from '@angular/core';
-import { AuthService } from './auth.service';
+import { requireRoles } from './role.guard';
 
-export const adminGuard: CanActivateFn = async () => {
-  const auth = inject(AuthService);
-  const router = inject(Router);
-
-  await auth.boot();
-
-  return auth.isAdmin() ? true : router.createUrlTree(['/dashboard']);
-};
+export const adminGuard = requireRoles('admin', 'superadmin');

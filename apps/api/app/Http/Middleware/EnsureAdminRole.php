@@ -12,7 +12,7 @@ class EnsureAdminRole
     {
         $user = $request->user();
 
-        if (! $user || $user->role?->slug !== 'admin') {
+        if (! $user || ! in_array($user->role?->slug, ['admin', 'superadmin'], true)) {
             abort(Response::HTTP_FORBIDDEN, 'No tienes permisos para realizar esta accion.');
         }
 

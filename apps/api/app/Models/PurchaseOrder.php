@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,12 +10,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseOrder extends Model
 {
+    use BelongsToCompany;
     use HasFactory;
 
     /**
      * @var list<string>
      */
     protected $fillable = [
+        'company_id',
         'public_id',
         'supplier_id',
         'user_id',

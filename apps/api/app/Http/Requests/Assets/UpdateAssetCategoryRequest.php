@@ -2,12 +2,14 @@
 
 namespace App\Http\Requests\Assets;
 
+use App\Http\Requests\Concerns\InteractsWithCompanyValidation;
 use App\Models\AssetCategory;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateAssetCategoryRequest extends FormRequest
 {
+    use InteractsWithCompanyValidation;
+
     public function authorize(): bool
     {
         return true;
@@ -22,7 +24,7 @@ class UpdateAssetCategoryRequest extends FormRequest
         $category = $this->route('asset_category');
 
         return [
-            'name' => ['required', 'string', 'max:255', Rule::unique('asset_categories', 'name')->ignore($category->id)],
+            'name' => ['required', 'string', 'max:255', $this->uniqueForCurrentCompany('asset_categories', 'name', $category->id)],
             'description' => ['nullable', 'string', 'max:1000'],
         ];
     }

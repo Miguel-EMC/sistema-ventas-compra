@@ -1,0 +1,413 @@
+<section class="relative space-y-8">
+  <header
+    class="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/95 px-6 py-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)] sm:px-8"
+  >
+    <div
+      class="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.14),_transparent_55%)]"
+      aria-hidden="true"
+    ></div>
+
+    <div class="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+      <div class="max-w-2xl space-y-3">
+        <span
+          class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.26em] text-slate-500"
+        >
+          Superadmin
+        </span>
+        <div class="space-y-2">
+          <h1 class="text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2.15rem]">
+            Empresas Registradas
+          </h1>
+          <p class="max-w-xl text-sm leading-6 text-slate-500 sm:text-[0.95rem]">
+            Administra el alta de nuevos clientes, revisa su estado comercial y centraliza el
+            onboarding del SaaS desde un solo panel.
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(15,23,42,0.16)] transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-200"
+        (click)="openDrawer()"
+      >
+        + Nueva Empresa
+      </button>
+    </div>
+  </header>
+
+  @if (createdAccess(); as createdAccess) {
+    <article
+      class="rounded-[1.6rem] border border-emerald-200 bg-emerald-50 px-5 py-5 text-sm text-emerald-900 shadow-sm"
+    >
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="space-y-1">
+          <p class="text-base font-semibold">Empresa {{ createdAccess.companyName }} creada.</p>
+          <p class="text-sm leading-6 text-emerald-800">
+            Guarda estas credenciales temporales del administrador inicial.
+          </p>
+        </div>
+
+        <dl class="grid gap-3 sm:grid-cols-3">
+          <div class="rounded-2xl border border-emerald-200/80 bg-white/70 px-4 py-3">
+            <dt class="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-emerald-700">
+              Usuario
+            </dt>
+            <dd class="mt-1 font-semibold text-slate-900">{{ createdAccess.admin_username }}</dd>
+          </div>
+          <div class="rounded-2xl border border-emerald-200/80 bg-white/70 px-4 py-3">
+            <dt class="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-emerald-700">
+              Email
+            </dt>
+            <dd class="mt-1 font-semibold text-slate-900">{{ createdAccess.admin_email }}</dd>
+          </div>
+          <div class="rounded-2xl border border-emerald-200/80 bg-white/70 px-4 py-3">
+            <dt class="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-emerald-700">
+              Clave temporal
+            </dt>
+            <dd class="mt-1 font-semibold text-slate-900">{{ createdAccess.temporary_password }}</dd>
+          </div>
+        </dl>
+      </div>
+    </article>
+  }
+
+  @if (error()) {
+    <article
+      class="rounded-[1.6rem] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 shadow-sm"
+    >
+      {{ error() }}
+    </article>
+  }
+
+  <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <article class="rounded-[1.6rem] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+      <span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Empresas</span>
+      <div class="mt-3 flex items-end justify-between gap-4">
+        <strong class="text-3xl font-semibold tracking-tight text-slate-950">
+          {{ totalCompanies() }}
+        </strong>
+        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
+          Total
+        </span>
+      </div>
+    </article>
+
+    <article class="rounded-[1.6rem] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+      <span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Activas</span>
+      <div class="mt-3 flex items-end justify-between gap-4">
+        <strong class="text-3xl font-semibold tracking-tight text-slate-950">
+          {{ activeCompanies() }}
+        </strong>
+        <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+          Operando
+        </span>
+      </div>
+    </article>
+
+    <article class="rounded-[1.6rem] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+      <span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
+        >Pendientes</span
+      >
+      <div class="mt-3 flex items-end justify-between gap-4">
+        <strong class="text-3xl font-semibold tracking-tight text-slate-950">
+          {{ pendingCompanies() }}
+        </strong>
+        <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+          Onboarding
+        </span>
+      </div>
+    </article>
+
+    <article class="rounded-[1.6rem] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+      <span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
+        >Enterprise</span
+      >
+      <div class="mt-3 flex items-end justify-between gap-4">
+        <strong class="text-3xl font-semibold tracking-tight text-slate-950">
+          {{ enterpriseCompanies() }}
+        </strong>
+        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
+          Premium
+        </span>
+      </div>
+    </article>
+  </section>
+
+  <section
+    class="overflow-hidden rounded-[2rem] border border-slate-200/90 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.07)]"
+  >
+    <div class="flex flex-col gap-3 border-b border-slate-200 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-lg font-semibold tracking-tight text-slate-950">Listado de clientes</h2>
+        <p class="text-sm text-slate-500">
+          Vista general de dominios, plan contratado y fecha de alta.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+        (click)="loadCompanies()"
+        [disabled]="loading()"
+      >
+        @if (loading()) {
+          Actualizando...
+        } @else {
+          Refrescar
+        }
+      </button>
+    </div>
+
+    @if (loading()) {
+      <div class="space-y-3 px-6 py-6">
+        @for (skeleton of [1, 2, 3, 4]; track skeleton) {
+          <div class="h-16 animate-pulse rounded-2xl bg-slate-100"></div>
+        }
+      </div>
+    } @else if (companies().length === 0) {
+      <div class="px-6 py-12 text-center">
+        <div
+          class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"
+        >
+          <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M4 20V8a2 2 0 0 1 2-2h4v14"></path>
+            <path d="M10 20V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"></path>
+            <path d="M4 20h16"></path>
+          </svg>
+        </div>
+        <h3 class="mt-4 text-lg font-semibold text-slate-900">Todavia no hay empresas</h3>
+        <p class="mt-2 text-sm leading-6 text-slate-500">
+          Crea el primer tenant para comenzar el onboarding desde este panel.
+        </p>
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200 text-left">
+          <thead class="bg-slate-50/80">
+            <tr class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+              <th class="px-6 py-4">Nombre</th>
+              <th class="px-6 py-4">Dominio</th>
+              <th class="px-6 py-4">Plan</th>
+              <th class="px-6 py-4">Estado</th>
+              <th class="px-6 py-4">Fecha de Registro</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-slate-100">
+            @for (company of companies(); track company.id) {
+              <tr class="transition hover:bg-slate-50/70">
+                <td class="px-6 py-4">
+                  <div class="space-y-1">
+                    <p class="font-medium text-slate-900">{{ company.name }}</p>
+                    <p class="text-sm text-slate-500">
+                      {{ company.admin_email || 'Sin correo principal' }}
+                    </p>
+                    @if (company.admin_username) {
+                      <p class="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                        {{ company.admin_username }}
+                      </p>
+                    }
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <span
+                    class="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-600"
+                  >
+                    {{ company.domain }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-sm font-medium text-slate-700">
+                  {{ planLabel(company.plan) }}
+                </td>
+                <td class="px-6 py-4">
+                  <span
+                    class="inline-flex rounded-full border px-3 py-1 text-sm font-medium"
+                    [class]="statusClasses(company.status)"
+                  >
+                    {{ statusLabel(company.status) }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-slate-500">
+                  {{ formatDate(company.registered_at) }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</section>
+
+@if (drawerOpen()) {
+  <div
+    class="fixed inset-0 z-40 bg-slate-950/25 backdrop-blur-[2px]"
+    (click)="closeDrawer()"
+    aria-hidden="true"
+  ></div>
+
+  <aside
+    class="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-slate-200 bg-[#f8fafc] shadow-[0_24px_80px_rgba(15,23,42,0.18)]"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="new-company-title"
+  >
+    <div class="border-b border-slate-200 bg-white px-6 py-5 sm:px-8">
+      <div class="flex items-start justify-between gap-4">
+        <div class="space-y-2">
+          <span
+            class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-slate-500"
+          >
+            Onboarding
+          </span>
+          <div>
+            <h2 id="new-company-title" class="text-2xl font-semibold tracking-tight text-slate-950">
+              Nueva Empresa
+            </h2>
+            <p class="mt-1 text-sm leading-6 text-slate-500">
+              Crea el tenant y dispara el acceso inicial para el administrador principal.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+          (click)="closeDrawer()"
+          aria-label="Cerrar formulario"
+        >
+          <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="m6 6 12 12"></path>
+            <path d="M18 6 6 18"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <form class="flex flex-1 flex-col overflow-y-auto" [formGroup]="form" (ngSubmit)="submit()">
+      <div class="flex-1 space-y-6 px-6 py-6 sm:px-8">
+        <article class="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <div class="space-y-1">
+            <h3 class="text-base font-semibold text-slate-900">Datos de la empresa</h3>
+            <p class="text-sm leading-6 text-slate-500">
+              Define la identidad principal con el slug que usaras para aislar el tenant.
+            </p>
+          </div>
+
+          <div class="mt-5 space-y-5">
+            <div class="space-y-2">
+              <label for="company-name" class="text-sm font-medium text-slate-700">
+                Nombre de la Empresa
+              </label>
+              <input
+                id="company-name"
+                type="text"
+                formControlName="name"
+                placeholder="Ej. Auditor Nocturno VIP S.A."
+                class="h-12 w-full rounded-2xl border bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4"
+                [class]="
+                  hasError('name')
+                    ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
+                    : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-100'
+                "
+              />
+              @if (fieldError('name'); as errorMessage) {
+                <p class="text-sm text-rose-600">{{ errorMessage }}</p>
+              }
+            </div>
+
+            <div class="space-y-2">
+              <label for="company-domain" class="text-sm font-medium text-slate-700">
+                Dominio / Slug
+              </label>
+              <input
+                id="company-domain"
+                type="text"
+                formControlName="domain"
+                placeholder="empresa-a"
+                class="h-12 w-full rounded-2xl border bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4"
+                [class]="
+                  hasError('domain')
+                    ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
+                    : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-100'
+                "
+                (input)="normalizeDomain()"
+              />
+              @if (fieldError('domain'); as errorMessage) {
+                <p class="text-sm text-rose-600">{{ errorMessage }}</p>
+              }
+            </div>
+
+            <div class="space-y-2">
+              <label for="company-plan" class="text-sm font-medium text-slate-700">Plan</label>
+              <select
+                id="company-plan"
+                formControlName="plan"
+                class="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+              >
+                @for (option of planOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        </article>
+
+        <article class="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+          <div class="space-y-1">
+            <h3 class="text-base font-semibold text-slate-900">Administrador principal</h3>
+            <p class="text-sm leading-6 text-slate-500">
+              Se creara un administrador inicial para esta empresa y al finalizar se mostrara la
+              clave temporal de acceso.
+            </p>
+          </div>
+
+          <div class="mt-5 space-y-2">
+            <label for="admin-email" class="text-sm font-medium text-slate-700">
+              Email del Administrador
+            </label>
+            <input
+              id="admin-email"
+              type="email"
+              formControlName="admin_email"
+              placeholder="admin@empresa.com"
+              class="h-12 w-full rounded-2xl border bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4"
+              [class]="
+                hasError('admin_email')
+                  ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
+                  : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-100'
+              "
+            />
+            @if (fieldError('admin_email'); as errorMessage) {
+              <p class="text-sm text-rose-600">{{ errorMessage }}</p>
+            }
+          </div>
+        </article>
+      </div>
+
+      <div class="border-t border-slate-200 bg-white px-6 py-5 sm:px-8">
+        <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            class="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            (click)="closeDrawer()"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="submit"
+            class="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(15,23,42,0.16)] transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            [disabled]="submitting()"
+          >
+            @if (submitting()) {
+              Creando empresa...
+            } @else {
+              Crear Empresa
+            }
+          </button>
+        </div>
+      </div>
+    </form>
+  </aside>
+}

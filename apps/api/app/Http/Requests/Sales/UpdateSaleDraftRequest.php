@@ -2,11 +2,13 @@
 
 namespace App\Http\Requests\Sales;
 
+use App\Http\Requests\Concerns\InteractsWithCompanyValidation;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateSaleDraftRequest extends FormRequest
 {
+    use InteractsWithCompanyValidation;
+
     public function authorize(): bool
     {
         return true;
@@ -18,7 +20,7 @@ class UpdateSaleDraftRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_id' => ['nullable', 'integer', Rule::exists('customers', 'id')],
+            'customer_id' => ['nullable', 'integer', $this->existsForCurrentCompany('customers')],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
     }

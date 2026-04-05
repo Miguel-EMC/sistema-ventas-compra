@@ -2,12 +2,14 @@
 
 namespace App\Http\Requests\Catalog;
 
+use App\Http\Requests\Concerns\InteractsWithCompanyValidation;
 use App\Models\ProductCategory;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateProductCategoryRequest extends FormRequest
 {
+    use InteractsWithCompanyValidation;
+
     public function authorize(): bool
     {
         return true;
@@ -22,7 +24,7 @@ class UpdateProductCategoryRequest extends FormRequest
         $category = $this->route('product_category');
 
         return [
-            'name' => ['required', 'string', 'max:255', Rule::unique('product_categories', 'name')->ignore($category->id)],
+            'name' => ['required', 'string', 'max:255', $this->uniqueForCurrentCompany('product_categories', 'name', $category->id)],
             'description' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['sometimes', 'boolean'],
         ];

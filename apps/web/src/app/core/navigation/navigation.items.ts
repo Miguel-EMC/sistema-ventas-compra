@@ -3,7 +3,7 @@ export interface NavigationItem {
   route: string;
   description: string;
   icon: string;
-  adminOnly?: boolean;
+  requiredRoles?: readonly string[];
 }
 
 export const NAVIGATION_ITEMS: NavigationItem[] = [
@@ -72,6 +72,13 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     route: '/users',
     description: 'Alta, edicion y control de accesos del panel.',
     icon: 'users',
-    adminOnly: true,
+    requiredRoles: ['admin', 'superadmin'],
+  },
+  {
+    label: 'Empresas',
+    route: '/companies',
+    description: 'Alta y seguimiento de tenants desde superadmin.',
+    icon: 'companies',
+    requiredRoles: ['superadmin'],
   },
 ];

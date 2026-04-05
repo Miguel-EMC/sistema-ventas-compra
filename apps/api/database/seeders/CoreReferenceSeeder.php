@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Company;
 use App\Models\User;
 use App\Models\ProductCategory;
 use App\Models\AssetCategory;
@@ -15,6 +16,14 @@ class CoreReferenceSeeder extends Seeder
     public function run(): void
     {
         DB::table('roles')->insertOrIgnore([
+            [
+                'name' => 'Superadministrador',
+                'slug' => 'superadmin',
+                'description' => 'Acceso global al SaaS multi-tenant',
+                'is_system' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
             [
                 'name' => 'Administrador',
                 'slug' => 'admin',
@@ -242,11 +251,37 @@ class CoreReferenceSeeder extends Seeder
         );
 
         $adminRoleId = DB::table('roles')->where('slug', 'admin')->value('id');
+        $superadminRoleId = DB::table('roles')->where('slug', 'superadmin')->value('id');
+        $demoCompany = Company::query()->updateOrCreate(
+            ['domain' => 'demo'],
+            [
+                'name' => 'VentasPOS Demo',
+                'status' => 'active',
+                'plan_id' => 'pro',
+            ],
+        );
+
+        $demoCompanyId = $demoCompany->id;
+
+        User::query()->updateOrCreate(
+            ['email' => 'superadmin@ventaspos.local'],
+            [
+                'public_id' => (string) Str::uuid(),
+                'company_id' => null,
+                'name' => 'Superadministrador SaaS',
+                'username' => 'superadmin',
+                'display_name' => 'Superadmin',
+                'password' => Hash::make('password'),
+                'role_id' => $superadminRoleId,
+                'is_active' => true,
+            ],
+        );
 
         User::query()->updateOrCreate(
             ['email' => 'admin@ventaspos.local'],
             [
                 'public_id' => (string) Str::uuid(),
+                'company_id' => $demoCompanyId,
                 'name' => 'Administrador base',
                 'username' => 'admin',
                 'display_name' => 'Administrador',
@@ -256,8 +291,32 @@ class CoreReferenceSeeder extends Seeder
             ],
         );
 
-        ProductCategory::query()->firstOrCreate(
-            ['slug' => 'general'],
+        foreach ([
+            'product_categories',
+            'products',
+            'asset_categories',
+            'assets',
+            'customers',
+            'suppliers',
+            'cash_registers',
+            'cash_sessions',
+            'cash_movements',
+            'sale_drafts',
+            'sales',
+            'purchase_orders',
+        ] as $table) {
+            if (DB::getSchemaBuilder()->hasColumn($table, 'company_id')) {
+                DB::table($table)->whereNull('company_id')->update([
+                    'company_id' => $demoCompanyId,
+                ]);
+            }
+        }
+
+        ProductCategory::query()->updateOrCreate(
+            [
+                'company_id' => $demoCompanyId,
+                'slug' => 'general',
+            ],
             [
                 'name' => 'General',
                 'description' => 'Categoria base del catalogo comercial',
@@ -265,17 +324,25 @@ class CoreReferenceSeeder extends Seeder
             ],
         );
 
-        AssetCategory::query()->firstOrCreate(
-            ['slug' => 'operativo'],
+        AssetCategory::query()->updateOrCreate(
+            [
+                'company_id' => $demoCompanyId,
+                'slug' => 'operativo',
+            ],
             [
                 'name' => 'Operativo',
                 'description' => 'Categoria base para activos internos',
             ],
         );
 
-        DB::table('cash_registers')->insertOrIgnore([
+        DB::table('cash_registers')->updateOrInsert(
+            [
+                'company_id' => $demoCompanyId,
+                'code' => 'CJ-01',
+            ],
             [
                 'public_id' => (string) Str::uuid(),
+                'company_id' => $demoCompanyId,
                 'name' => 'Caja principal',
                 'code' => 'CJ-01',
                 'location' => 'Mostrador principal',
@@ -283,6 +350,6 @@ class CoreReferenceSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
-        ]);
+        );
     }
 }

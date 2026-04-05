@@ -2,12 +2,14 @@
 
 namespace App\Http\Requests\Assets;
 
+use App\Http\Requests\Concerns\InteractsWithCompanyValidation;
 use App\Models\Asset;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateAssetRequest extends FormRequest
 {
+    use InteractsWithCompanyValidation;
+
     public function authorize(): bool
     {
         return true;
@@ -23,8 +25,8 @@ class UpdateAssetRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:80', Rule::unique('assets', 'code')->ignore($asset->id)],
-            'category_id' => ['nullable', 'integer', Rule::exists('asset_categories', 'id')],
+            'code' => ['nullable', 'string', 'max:80', $this->uniqueForCurrentCompany('assets', 'code', $asset->id)],
+            'category_id' => ['nullable', 'integer', $this->existsForCurrentCompany('asset_categories')],
             'description' => ['nullable', 'string', 'max:3000'],
             'quantity' => ['required', 'numeric', 'min:0'],
             'acquisition_cost' => ['nullable', 'numeric', 'min:0'],

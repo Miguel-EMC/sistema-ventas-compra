@@ -16,7 +16,9 @@ export class AuthService {
   readonly status = signal<'idle' | 'loading' | 'authenticated' | 'guest'>('idle');
 
   readonly isAuthenticated = computed(() => this.user() !== null);
-  readonly isAdmin = computed(() => this.user()?.role?.slug === 'admin');
+  readonly isAdmin = computed(() => this.hasRole('admin'));
+  readonly isSuperadmin = computed(() => this.hasRole('superadmin'));
+  readonly hasAdminAccess = computed(() => this.hasRole('admin', 'superadmin'));
 
   async boot(): Promise<void> {
     if (this.booted()) {
@@ -87,6 +89,16 @@ export class AuthService {
     }
 
     return localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
+  }
+
+  hasRole(...slugs: string[]): boolean {
+    const roleSlug = this.user()?.role?.slug;
+
+    return roleSlug !== undefined && roleSlug !== null ? slugs.includes(roleSlug) : false;
+  }
+
+  defaultRoute(): string {
+    return this.hasRole('superadmin') ? '/companies' : '/dashboard';
   }
 
   private setToken(token: string): void {

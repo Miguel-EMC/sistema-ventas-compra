@@ -11,13 +11,14 @@ use Illuminate\Validation\ValidationException;
 class UserManagementService
 {
     /**
-     * @param array{name:string,username:string,display_name?:string|null,email?:string|null,password:string,role_id:int,is_active?:bool} $payload
+     * @param array{name:string,username:string,display_name?:string|null,email?:string|null,password:string,role_id:int,is_active?:bool,company_id?:string|null} $payload
      */
-    public function create(array $payload): User
+    public function create(array $payload, ?User $actor = null): User
     {
-        return DB::transaction(function () use ($payload): User {
+        return DB::transaction(function () use ($payload, $actor): User {
             $user = User::query()->create([
                 'public_id' => (string) Str::uuid(),
+                'company_id' => $payload['company_id'] ?? $actor?->company_id,
                 'name' => $payload['name'],
                 'username' => $payload['username'],
                 'display_name' => $payload['display_name'] ?: $payload['name'],
@@ -32,7 +33,7 @@ class UserManagementService
     }
 
     /**
-     * @param array{name:string,username:string,display_name?:string|null,email?:string|null,password?:string|null,role_id:int,is_active?:bool} $payload
+     * @param array{name:string,username:string,display_name?:string|null,email?:string|null,password?:string|null,role_id:int,is_active?:bool,company_id?:string|null} $payload
      */
     public function update(User $user, array $payload): User
     {
@@ -40,6 +41,7 @@ class UserManagementService
             $this->guardLastAdminState($user, $payload);
 
             $attributes = [
+                'company_id' => array_key_exists('company_id', $payload) ? $payload['company_id'] : $user->company_id,
                 'name' => $payload['name'],
                 'username' => $payload['username'],
                 'display_name' => $payload['display_name'] ?: $payload['name'],
@@ -90,6 +92,11 @@ class UserManagementService
 
         $activeAdmins = User::query()
             ->whereHas('role', fn ($query) => $query->where('slug', 'admin'))
+            ->when(
+                $user->company_id === null,
+                fn ($query) => $query->whereNull('company_id'),
+                fn ($query) => $query->where('company_id', $user->company_id),
+            )
             ->where('is_active', true)
             ->count();
 
@@ -112,6 +119,11 @@ class UserManagementService
 
         $activeAdmins = User::query()
             ->whereHas('role', fn ($query) => $query->where('slug', 'admin'))
+            ->when(
+                $user->company_id === null,
+                fn ($query) => $query->whereNull('company_id'),
+                fn ($query) => $query->where('company_id', $user->company_id),
+            )
             ->where('is_active', true)
             ->count();
 

@@ -127,6 +127,19 @@ import { NAVIGATION_ITEMS } from '../navigation/navigation.items';
                         <path d="M6.3 15.1A3 3 0 0 0 4 18"></path>
                       </svg>
                     }
+                    @case ('companies') {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M4 20V8a2 2 0 0 1 2-2h4v14"></path>
+                        <path d="M10 20V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"></path>
+                        <path d="M4 20h16"></path>
+                        <path d="M7 10h.01"></path>
+                        <path d="M7 13h.01"></path>
+                        <path d="M7 16h.01"></path>
+                        <path d="M14 7h2"></path>
+                        <path d="M14 11h2"></path>
+                        <path d="M14 15h2"></path>
+                      </svg>
+                    }
                     @default {
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                         <circle cx="12" cy="12" r="8"></circle>
@@ -202,7 +215,11 @@ export class AppShellComponent {
   protected readonly menuOpen = signal(false);
 
   protected readonly navigation = computed(() =>
-    NAVIGATION_ITEMS.filter((item) => !item.adminOnly || this.auth.isAdmin()),
+    NAVIGATION_ITEMS.filter((item) =>
+      item.requiredRoles && item.requiredRoles.length > 0
+        ? this.auth.hasRole(...item.requiredRoles)
+        : true,
+    ),
   );
 
   protected readonly today = new Intl.DateTimeFormat('es-EC', {

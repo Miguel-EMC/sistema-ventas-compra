@@ -40,7 +40,7 @@ class UserController extends Controller
 
     public function store(StoreUserRequest $request, UserManagementService $service): JsonResponse
     {
-        $user = $service->create($request->validated());
+        $user = $service->create($request->validated(), $request->user());
 
         return UserResource::make($user)
             ->response()
